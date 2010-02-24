@@ -17,7 +17,7 @@ public class DHTFox {
 	private ByteArray hashedSecret;
 	DHT<String> dht = null;
 
-	public DHTFox(String secret) {
+	public DHTFox(String secret, boolean upnpEnable) {
 		try {
 			this.hashedSecret = new ByteArray(secret.getBytes("UTF-8"))
 					.hashWithSHA1();
@@ -27,9 +27,10 @@ public class DHTFox {
 			config.setMessagingTransport("UDP");
 			config.setRoutingAlgorithm("Kademlia");
 			config.setRoutingStyle("Iterative");
-			config.setDoUPnPNATTraversal(true);
+			config.setDoUPnPNATTraversal(upnpEnable);
 			config.setDoExpire(true);
-			config.setDoReputOnRequester(true);
+			config.setDoReputOnRequester(false);
+			config.setUseTimerInsteadOfThread(false);
 
 			dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_MAJOR_VERSION,
 					config, null);
