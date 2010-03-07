@@ -1,8 +1,6 @@
 package org.dhtfox;
 
 import java.net.UnknownHostException;
-import java.util.Set;
-
 import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
@@ -50,8 +48,9 @@ public class DHTFox {
 		dht.stop();
 	}
 
-	public Set<ValueInfo<String>> get(String keyString) throws RoutingException {
-		return dht.get(ID.getSHA1BasedID(keyString.getBytes()));
+	@SuppressWarnings("unchecked")
+	public ValueInfo<String>[] get(String keyString) throws RoutingException {
+		return (ValueInfo<String>[])dht.get(ID.getSHA1BasedID(keyString.getBytes())).toArray();
 	}
 
 	public void put(String keyString, String value) throws Exception {

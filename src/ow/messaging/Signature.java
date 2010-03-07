@@ -21,12 +21,6 @@ package ow.messaging;
  * A class to calculate a signature of messages.
  */
 public final class Signature {
-	// public constants
-	public final static byte APPLICATION_ID_DHT_SHELL = 1;
-	public final static byte APPLICATION_ID_GROUP_MANAGER_SHELL = 2;
-	public final static byte APPLICATION_ID_ALM_ROUTER = 3;
-	public final static byte APPLICATION_ID_MEMCACHED = 4;
-
 	// private constants
 	private final static byte[] SIGNATURE = { 0x4f, 0x57 };	// "OW"
 	private final static int SIGNATURE_LENGTH = 8;

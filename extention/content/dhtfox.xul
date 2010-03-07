@@ -1,0 +1,11 @@
+<?xml version="1.0"?>                                                                                                  
+                                                                                                                       
+<window id="main" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">                               
+    <script type="application/x-javascript" src="chrome://dhtfox/content/dhtfox.js" />                               
+    <label value="key" />                                                                                              
+    <textbox id="key" />                                                                                               
+    <label value="value" />                                                                                            
+    <textbox id="value" />                                                                                             
+    <button label="get" oncommand='get()' />                                                                           
+    <button label="put" oncommand='put()' />                                                                           
+</window>
