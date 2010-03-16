@@ -24,7 +24,7 @@ import ow.dht.DHTFactory;
 import ow.dht.ValueInfo;
 import ow.id.ID;
 
-public class DHTFox {
+public class DHTServer {
     static {
         SLF4JBridgeHandler.install();
     }
