@@ -13,248 +13,223 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package ow.messaging.upnp;
 
+import fr.free.miniupnp.IGDdatas;
+import fr.free.miniupnp.MiniupnpcLibrary;
+import fr.free.miniupnp.UPNPDev;
+import fr.free.miniupnp.UPNPUrls;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.cybergarage.upnp.Action;
-import org.cybergarage.upnp.Argument;
-import org.cybergarage.upnp.ControlPoint;
-import org.cybergarage.upnp.Device;
-import org.cybergarage.upnp.Service;
-import org.cybergarage.upnp.device.DeviceChangeListener;
 
 /**
  * An utility to establish address and port mappings on an Internet router
  * with UPnP protocol.
  */
 public final class UPnPManager {
-	private final static Logger logger = Logger.getLogger("messaging");
 
-	private final static String ROUTER_DEV =
-		"urn:schemas-upnp-org:device:InternetGatewayDevice:1";
-	private final static String WAN_DEV =
-		"urn:schemas-upnp-org:device:WANDevice:1";
-	private final static String WANCON_DEV =
-		"urn:schemas-upnp-org:device:WANConnectionDevice:1";
-	private final static String WANIPCON_SERV =
-		"urn:schemas-upnp-org:service:WANIPConnection:1";
-	private final static String WANPPPCON_SERV =
-		"urn:schemas-upnp-org:service:WANPPPConnection:1";
+    private final static Logger logger = Logger.getLogger("messaging");
+    private final static int UPNP_DELAY = 2000;
+    private static UPnPManager singletonInstance = new UPnPManager();
 
-	private static UPnPManager singletonInstance = new UPnPManager();
+    public static UPnPManager getInstance() {
+        return UPnPManager.singletonInstance;
+    }
+    private MiniupnpcLibrary miniupnpc = MiniupnpcLibrary.INSTANCE;
+    private UPNPDev devlist = null;
+    private UPNPUrls urls = new UPNPUrls();
+    private IGDdatas data = new IGDdatas();
+    private ByteBuffer lanaddr = ByteBuffer.allocate(16);
+    private final Set<Mapping> registeredMappings = new HashSet<Mapping>();
+    private boolean deviceFound = false;
+    private DeviceDiscoverThread discover;
 
-	public static UPnPManager getInstance() { return UPnPManager.singletonInstance; }
+    private class DeviceDiscoverThread extends Thread {
+        public void run() {
+            devlist = miniupnpc.upnpDiscover(UPNP_DELAY, (String) null, (String) null, 0);
+            if (devlist != null) {
+                int i;
+                logger.log(Level.INFO, "List of UPNP devices found on the network :");
+                for (UPNPDev device = devlist; device != null; device = device.pNext) {
+                    logger.log(Level.INFO, "desc: " + device.descURL.getString(0) + " st: " + device.st.getString(0));
+                }
+                if ((i = miniupnpc.UPNP_GetValidIGD(devlist, urls, data, lanaddr, 16)) != 0) {
+                    switch (i) {
+                        case 1:
+                            logger.log(Level.INFO, "Found valid IGD : " + urls.controlURL.getString(0));
+                            break;
+                        case 2:
+                            logger.log(Level.INFO, "Found a (not connected?) IGD : " + urls.controlURL.getString(0));
+                            logger.log(Level.INFO, "Trying to continue anyway");
+                            break;
+                        case 3:
+                            logger.log(Level.INFO, "UPnP device found. Is it an IGD ? : " + urls.controlURL.getString(0));
+                            logger.log(Level.INFO, "Trying to continue anyway");
+                            break;
+                        default:
+                            logger.log(Level.INFO, "Found device (igd ?) : " + urls.controlURL.getString(0));
+                            logger.log(Level.INFO, "Trying to continue anyway");
 
-	private ControlPoint cp;
-	private Device dev;
-	private Service serv;
-	private final Set<Mapping> registeredMappings = new HashSet<Mapping>();
+                    }
+                    logger.log(Level.INFO, "Local LAN ip address : " + new String(lanaddr.array()));
+                } else {
+                    logger.log(Level.SEVERE, "No valid UPNP Internet Gateway Device found.");
+                    return;
+                }
+            } else {
+                logger.log(Level.SEVERE, "No IGD UPnP Device found on the network !\n");
+                return;
+            }
+            deviceFound = true;
+            synchronized (UPnPManager.this) {
+                UPnPManager.this.notifyAll();
+            }
+        }
+    }
 
-	private UPnPManager() {
-		this.cp = new ControlPoint();
-	}
+    private UPnPManager() {
+    }
 
-	public boolean start() {
-		this.cp.addDeviceChangeListener(new DevChgListener());
-		boolean ret = this.cp.start();
+    public boolean start() {
+        discover = new DeviceDiscoverThread();
+        discover.start();
+        logger.log(Level.INFO, "UPnP manager started.");
+        return true;
+    }
 
-		logger.log(Level.INFO, "UPnP manager started.");
+    public void stop() {
+    }
 
-		return ret;
-	}
+    public void waitForDeviceFound() {
+        this.waitForDeviceFound(Long.MAX_VALUE);
+    }
 
-	public void stop() {
-		this.cp.stop();
-	}
+    public boolean waitForDeviceFound(long timeout) {
+        synchronized (this) {
+            if (deviceFound) {
+                return true;
+            }
+            try {
+                this.wait(timeout);
+            } catch (InterruptedException e) {
+            }
+        }
+        return deviceFound;
+    }
 
-	public void waitForDeviceFound() {
-		this.waitForDeviceFound(Long.MAX_VALUE);
-	}
+    public InetAddress getExternalAddress() {
+        try {
+            ByteBuffer externalAddress = ByteBuffer.allocate(16);
+            miniupnpc.UPNP_GetExternalIPAddress(urls.controlURL.getString(0),
+                    new String(data.servicetype), externalAddress);
+            return InetAddress.getByName(new String(externalAddress.array()));
+        } catch (UnknownHostException ex) {
+            Logger.getLogger(UPnPManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
 
-	public boolean waitForDeviceFound(long timeout) {
-		synchronized (this) {
-			if (this.deviceFound()) return true;
+    /**
+     * Adds a port mapping.
+     *
+     * @param protocol "TCP" or "UDP"
+     * @param description optional
+     * @return true if succeed.
+     */
+    public boolean addMapping(Mapping map) {
+        ByteBuffer intClient = ByteBuffer.allocate(16);
+        ByteBuffer intPort = ByteBuffer.allocate(6);
+        boolean succeed = false;
+        int ret = miniupnpc.UPNP_AddPortMapping(
+                urls.controlURL.getString(0), new String(data.servicetype),
+                Integer.toString(map.getExternalPort()),
+                Integer.toString(map.getInternalPort()),
+                new String(lanaddr.array()), map.getDescription(),
+                map.getProtocol().toString(), null);
+        if (ret == MiniupnpcLibrary.UPNPCOMMAND_SUCCESS) {
+            ret = miniupnpc.UPNP_GetSpecificPortMappingEntry(
+                    urls.controlURL.getString(0), new String(data.servicetype),
+                    Integer.toString(map.getExternalPort()),
+                    map.getProtocol().toString(), intClient, intPort);
+            if (ret == MiniupnpcLibrary.UPNPCOMMAND_SUCCESS)
+                succeed = true;
+            else
+                System.out.println("GetSpecificPortMappingEntry() failed with code " + ret);
+        }else{
+            System.out.println("AddPortMapping() failed with code " + ret);
+          }
+        System.out.println("InternalIP:Port = "
+                + new String(intClient.array()) + ":" + new String(intPort.array()));
 
-			try {
-				this.wait(timeout);
-			}
-			catch (InterruptedException e) { /*ignore*/ }
-		}
+        if (succeed) {
+            synchronized (this.registeredMappings) {
+                this.registeredMappings.add(map);
+            }
+        }
+        logger.log(Level.INFO, "UPnP address port mapping "
+                + (succeed ? "succeeded" : "failed")
+                + ": ext port " + map.getExternalPort()
+                + ", internal port " + map.getInternalPort());
 
-		return this.deviceFound();
-	}
+        return succeed;
+    }
 
-	private boolean deviceFound() {
-		return (UPnPManager.this.dev != null && UPnPManager.this.serv != null);
-	}
+    /**
+     * Deletes a port mapping.
+     *
+     * @return true if succeed.
+     */
+    public boolean deleteMapping(int externalPort, Mapping.Protocol protocol) {
+        Mapping map = new Mapping(externalPort, null, 0, protocol, null);
+        return this.deleteMapping(map);
+    }
 
-	private class DevChgListener implements DeviceChangeListener {
-		public void deviceAdded(Device dev) {
-			if (UPnPManager.this.deviceFound()) {
-				// no NAT device has been found
-				return;
-			}
+    /**
+     * Deletes a port mapping.
+     *
+     * @param protocol "TCP" or "UDP"
+     * @return true if succeed.
+     */
+    public boolean deleteMapping(Mapping map) {
+        int ret = miniupnpc.UPNP_DeletePortMapping(
+                urls.controlURL.getString(0),
+                new String(data.servicetype),
+                Integer.toString(map.getExternalPort()),
+                map.getProtocol().toString(), null);
+        boolean succeed = ret == miniupnpc.UPNPCOMMAND_SUCCESS ? true : false;
+        if (succeed) {
+            synchronized (this.registeredMappings) {
+                this.registeredMappings.remove(map);
+            }
+        }
+        logger.log(Level.INFO, "UPnP address port mapping "
+                + (succeed ? "deleted" : "deletion failed")
+                + ": ext port " + map.getExternalPort());
 
-			if (!(dev.getDeviceType().equals(UPnPManager.ROUTER_DEV) && dev.isRootDevice())) {
-				return;
-			}
+        return succeed;
+    }
 
-			UPnPManager.this.dev = dev;
+    public void clearMapping() {
+        int size;
+        Mapping[] maps;
 
-			for (Object o1: dev.getDeviceList()) {
-				Device d1 = (Device)o1;
+        synchronized (this.registeredMappings) {
+            size = this.registeredMappings.size();
+            if (size <= 0) {
+                return;
+            }
 
-				if (!d1.getDeviceType().equals(UPnPManager.WAN_DEV))
-					continue;
+            maps = new Mapping[size];
+            this.registeredMappings.toArray(maps);
+        }
 
-				for (Object o2: d1.getDeviceList()) {
-					Device d2 = (Device)o2;
-
-					if (!d2.getDeviceType().equals(UPnPManager.WANCON_DEV))
-						continue;
-
-					UPnPManager.this.serv = d2.getService(UPnPManager.WANIPCON_SERV);
-					if (UPnPManager.this.serv == null)
-						UPnPManager.this.serv = d2.getService(UPnPManager.WANPPPCON_SERV);
-
-					logger.log(Level.INFO, "UPnP device found: " + dev.getFriendlyName());
-
-					// notify
-					synchronized (UPnPManager.this) {
-						UPnPManager.this.notifyAll();
-					}
-				}
-			}
-		}
-
-		public void deviceRemoved(Device dev) { /* ignore */ }
-	}
-
-	public InetAddress getExternalAddress() {
-		if (!this.deviceFound()) return null;
-
-		Action a = this.serv.getAction("GetExternalIPAddress");
-		if (a == null) return null;
-
-		if (!a.postControlAction()) {
-			return null;
-		}
-
-		Argument ipAddrArg = a.getOutputArgumentList().getArgument("NewExternalIPAddress");
-
-		InetAddress ipAddr = null;
-		try {
-			ipAddr = InetAddress.getByName(ipAddrArg.getValue());
-		} catch (UnknownHostException e) {
-			// NOTREACHED
-			return null;
-		}
-
-		return ipAddr;
-	}
-
-	/**
-	 * Adds a port mapping.
-	 *
-	 * @param protocol "TCP" or "UDP"
-	 * @param description optional
-	 * @return true if succeed.
-	 */
-	public boolean addMapping(Mapping map) {
-		if (!this.deviceFound()) return false;
-
-		Action a = this.serv.getAction("AddPortMapping");
-		if (a == null) return false;
-
-		a.setArgumentValue("NewRemoteHost", "");
-		a.setArgumentValue("NewExternalPort", map.getExternalPort());
-		a.setArgumentValue("NewInternalClient", map.getInternalAddress());
-		a.setArgumentValue("NewInternalPort", map.getInternalPort());
-		a.setArgumentValue("NewProtocol", map.getProtocol().toString());
-		String desc = map.getDescription();
-		if (desc != null)
-			a.setArgumentValue("NewPortMappingDescription", desc);
-		a.setArgumentValue("NewEnabled", "1");
-		a.setArgumentValue("NewLeaseDuration", 0);
-
-		boolean succeed = a.postControlAction();
-		if (succeed) {
-			synchronized (this.registeredMappings) {
-				this.registeredMappings.add(map);
-			}
-		}
-
-		logger.log(Level.INFO, "UPnP address port mapping "
-				+ (succeed ? "succeeded" : "failed")
-				+ ": ext port " + map.getExternalPort()
-				+ ", internal port " + map.getInternalPort());
-
-		return succeed;
-	}
-
-	/**
-	 * Deletes a port mapping.
-	 *
-	 * @return true if succeed.
-	 */
-	public boolean deleteMapping(int externalPort, Mapping.Protocol protocol) {
-		Mapping map = new Mapping(externalPort, null, 0, protocol, null);
-		return this.deleteMapping(map);
-	}
-
-	/**
-	 * Deletes a port mapping.
-	 *
-	 * @param protocol "TCP" or "UDP"
-	 * @return true if succeed.
-	 */
-	public boolean deleteMapping(Mapping map) {
-		if (!this.deviceFound()) return false;
-
-		Action a = this.serv.getAction("DeletePortMapping");
-		if (a == null) return false;
-
-		a.setArgumentValue("NewRemoteHost", "");
-		a.setArgumentValue("NewExternalPort", map.getExternalPort());
-		a.setArgumentValue("NewProtocol", map.getProtocol().toString());
-
-		boolean succeed = a.postControlAction();
-		if (succeed) {
-			synchronized (this.registeredMappings) {
-				this.registeredMappings.remove(map);
-			}
-		}
-
-		logger.log(Level.INFO, "UPnP address port mapping "
-				+ (succeed ? "deleted" : "deletion failed")
-				+ ": ext port " + map.getExternalPort());
-
-		return succeed;
-	}
-
-	public void clearMapping() {
-		if (!this.deviceFound()) return;
-
-		int size;
-		Mapping[] maps;
-
-		synchronized (this.registeredMappings) {
-			size = this.registeredMappings.size();
-			if (size <= 0) return;
-
-			maps = new Mapping[size];
-			this.registeredMappings.toArray(maps);
-		}
-
-		for (Mapping m: maps) {
-			this.deleteMapping(m.getExternalPort(), m.getProtocol());
-		}
-	}
+        for (Mapping m : maps) {
+            this.deleteMapping(m.getExternalPort(), m.getProtocol());
+        }
+    }
 }
