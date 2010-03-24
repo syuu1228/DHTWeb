@@ -21,10 +21,8 @@ import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
 import ow.dht.DHTFactory;
-import ow.dht.ValueInfo;
-import ow.id.ID;
 
-public class DHTServer {
+public class DHTFox {
     static {
         SLF4JBridgeHandler.install();
     }
@@ -33,7 +31,7 @@ public class DHTServer {
     private ByteArray hashedSecret;
     private DHT<String> dht = null;
 
-    public void initialize(String secret, boolean upnpEnable) {
+    public void start(String secret, boolean upnpEnable, String bootstrapNode) {
         try {
             this.hashedSecret = new ByteArray(secret.getBytes("UTF-8")).hashWithSHA1();
             DHTConfiguration config = DHTFactory.getDefaultConfiguration();
@@ -48,16 +46,9 @@ public class DHTServer {
             config.setUseTimerInsteadOfThread(false);
             dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_MAJOR_VERSION, config, null);
             dht.setHashedSecretForPut(hashedSecret);
+            dht.joinOverlay(bootstrapNode);
         } catch (Exception e) {
             new ErrorDialog("Error on initialize", e.toString());
-        }
-    }
-
-    public void join(String hostAndPort) {
-        try {
-            dht.joinOverlay(hostAndPort);
-        } catch (Exception e) {
-            new ErrorDialog("Error on join", e.toString());
         }
     }
 
@@ -66,25 +57,6 @@ public class DHTServer {
             dht.stop();
         } catch (Exception e) {
             new ErrorDialog("Error on stop", e.toString());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public ValueInfo<String>[] get(String keyString) {
-        ValueInfo<String>[] values = null;
-        try {
-            values = (ValueInfo<String>[]) dht.get(ID.getSHA1BasedID(keyString.getBytes())).toArray();
-        } catch (Exception e) {
-            new ErrorDialog("Error on get", e.toString());
-        }
-        return values;
-    }
-
-    public void put(String keyString, String value) throws Exception {
-        try {
-        dht.put(ID.getSHA1BasedID(keyString.getBytes()), value);
-        } catch (Exception e) {
-            new ErrorDialog("Error on put", e.toString());
         }
     }
 }
