@@ -13,26 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.dhtfox;
 
+import java.net.Proxy;
+import netscape.javascript.JSObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
 import org.slf4j.bridge.SLF4JBridgeHandler;
+import org.slf4j.impl.FirefoxLogger;
 import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
 import ow.dht.DHTFactory;
 
 public class DHTFox {
+
     static {
         SLF4JBridgeHandler.install();
     }
+    private static final Logger logger = LoggerFactory.getLogger(DHTFox.class);
     public static final short APPLICATION_ID = 0x0876;
     public static final short APPLICATION_MAJOR_VERSION = 0;
+    public static final Proxy PROXY_SETTING = Proxy.NO_PROXY;
+    public static final int HTTP_REQUEST_TIMEOUT = 1000;
     private ByteArray hashedSecret;
     private DHT<String> dht = null;
+    private HTTPServer http = null;
 
-    public void start(String secret, boolean upnpEnable, String bootstrapNode) {
+    public DHT<String> getDHT() {
+        return dht;
+    }
+
+    public void start(String secret, boolean upnpEnable, String bootstrapNode, int dhtPort, int httpPort, JSObject cacheCallback, JSObject loggerCallback) throws Exception {
         try {
+            FirefoxLogger.setJSCallback(loggerCallback);
             this.hashedSecret = new ByteArray(secret.getBytes("UTF-8")).hashWithSHA1();
             DHTConfiguration config = DHTFactory.getDefaultConfiguration();
             config.setImplementationName("ChurnTolerantDHT");
@@ -44,19 +59,20 @@ public class DHTFox {
             config.setDoExpire(true);
             config.setDoReputOnRequester(false);
             config.setUseTimerInsteadOfThread(false);
+            config.setContactPort(dhtPort);
             dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_MAJOR_VERSION, config, null);
             dht.setHashedSecretForPut(hashedSecret);
-            dht.joinOverlay(bootstrapNode);
+            if (bootstrapNode != null)
+                dht.joinOverlay(bootstrapNode);
+            http = new HTTPServer(httpPort, dht, PROXY_SETTING, HTTP_REQUEST_TIMEOUT, cacheCallback);
+            http.bind();
         } catch (Exception e) {
-            new ErrorDialog("Error on initialize", e.toString());
+            logger.warn(e.getMessage(), e);
+            throw e;
         }
     }
 
     public void stop() {
-        try {
-            dht.stop();
-        } catch (Exception e) {
-            new ErrorDialog("Error on stop", e.toString());
-        }
+        dht.stop();
     }
 }

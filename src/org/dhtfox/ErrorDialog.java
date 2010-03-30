@@ -26,42 +26,40 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 
 public class ErrorDialog extends Dialog {
-	Label label = new Label();
-	Button button = new Button();
-	Panel panel = new Panel();
-	
-	public ErrorDialog(String title, String message) {
-		super((Dialog)null, title, true);
-		this.setResizable(false);
-		this.enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-		label.setText(message);
-		button.setLabel("OK");
-		button.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				close();
-			}
-		});
-		panel.add(button);
-		add(label);
-		add(panel, BorderLayout.SOUTH);
-		pack();
-		setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
-		setVisible(true);
-	}
 
-	protected void close() {
-		dispose();
-	}
-	
-	protected void processWindowEvent(WindowEvent event) {
-		if(event.getID() == WindowEvent.WINDOW_CLOSING)
-			close();
-	}
+    Label label = new Label();
+    Button button = new Button();
+    Panel panel = new Panel();
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 9044966929394397237L;
+    public ErrorDialog(String title, String message) {
+        super((Dialog) null, title, true);
+        this.setResizable(false);
+        this.enableEvents(AWTEvent.WINDOW_EVENT_MASK);
+        label.setText(message);
+        button.setLabel("OK");
+        button.addActionListener(new ActionListener() {
 
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                close();
+            }
+        });
+        panel.add(button);
+        add(label);
+        add(panel, BorderLayout.SOUTH);
+        pack();
+        setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
+        setVisible(true);
+    }
+
+    protected void close() {
+        dispose();
+    }
+
+    @Override
+    protected void processWindowEvent(WindowEvent event) {
+        if (event.getID() == WindowEvent.WINDOW_CLOSING) {
+            close();
+        }
+    }
 }
