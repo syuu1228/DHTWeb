@@ -50,7 +50,7 @@ public class HTTPServer {
     public void bind() throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         HttpHandler proxyHandler = new ProxyHandler(dht, proxy, httpTimeout);
-        HttpHandler requestHandler = new RequestHandler(cacheCallback);
+        HttpHandler requestHandler = new RequestHandler(cacheCallback, port);
         server.createContext("/proxy/", proxyHandler);
         server.createContext("/request/", requestHandler);
         server.start();

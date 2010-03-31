@@ -15,6 +15,7 @@
  */
 package org.dhtfox;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dareka.processor.HttpUtil;
@@ -25,7 +26,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.Proxy;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,7 +68,7 @@ public class ProxyHandler implements HttpHandler {
                 int response = connection.getResponseCode();
                 if (response == HttpURLConnection.HTTP_OK) {
                     logger.info("HTTP response == OK");
-                    he.getResponseHeaders().set("Content-Type", connection.getContentType());
+                    setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
                     he.sendResponseHeaders(HttpURLConnection.HTTP_OK, connection.getContentLength());
                     OutputStream out = he.getResponseBody();
                     InputStream in = connection.getInputStream();
@@ -106,47 +106,18 @@ public class ProxyHandler implements HttpHandler {
         return false;
     }
 
-    @Override
-    public void handle(HttpExchange he) throws IOException {
-        URL url = null;
-
-        if (!he.getRemoteAddress().getAddress().isLoopbackAddress()) {
-            logger.info("/proxy/ accessed from external address:" + he.getRemoteAddress());
-            he.sendResponseHeaders(HttpURLConnection.HTTP_FORBIDDEN, 0);
-            he.getRequestBody().close();
-        }
-        try {
-            url = new URL(he.getRequestURI().getPath().replaceFirst("^/proxy/", ""));
-            logger.info("url:{}", url);
-        } catch (MalformedURLException e) {
-            logger.info(e.getMessage());
-            he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
-            he.getRequestBody().close();
-        }
-        /*
-        try {
-        boolean result = proxyToDHT(he, url);
-        if (result) {
-        return;
-        }
-        } catch (RoutingException e) {
-        logger.info(e.getMessage());
-        }
-         */
+    private void proxyToOriginalServer(HttpExchange he, URL url) {
         logger.info("Request proxying");
+        HttpURLConnection connection = null;
         InputStream in = null;
         OutputStream out = null;
         try {
-            URLConnection connection = url.openConnection(proxy);
+            connection = (HttpURLConnection)url.openConnection(proxy);
+            connection.setConnectTimeout(httpTimeout);
             connection.connect();
-            for (Map.Entry<String, List<String>> entry : connection.getHeaderFields().entrySet()) {
-                String key = entry.getKey();
-                List<String> values = entry.getValue();
-                if (key != null) {
-                    he.getResponseHeaders().put(key, values);
-                }
-            }
-            he.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+            setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
+            int responseCode = connection.getResponseCode();
+            he.sendResponseHeaders(responseCode, connection.getContentLength());
             in = connection.getInputStream();
             out = he.getResponseBody();
             HttpUtil.sendBody(out, in, connection.getContentLength());
@@ -162,7 +133,55 @@ public class ProxyHandler implements HttpHandler {
                 in.close();
             } catch (Exception e) {
             }
+            try {
+                connection.disconnect();
+            } catch (Exception e) {
+            }
         }
         logger.info("Request done");
     }
+
+    @Override
+    public void handle(HttpExchange he) throws IOException {
+        URL url = null;
+
+        if (!he.getRemoteAddress().getAddress().isLoopbackAddress()) {
+            logger.info("/proxy/ accessed from external address:" + he.getRemoteAddress());
+            he.sendResponseHeaders(HttpURLConnection.HTTP_FORBIDDEN, 0);
+            try {he.getRequestBody().close(); }catch(Exception e){}
+            try {he.getResponseBody().close(); }catch(Exception e){}
+            return;
+        }
+        try {
+            url = new URL(he.getRequestURI().getPath().replaceFirst("^/proxy/", ""));
+            logger.info("url:{}", url);
+        } catch (MalformedURLException e) {
+            logger.info(e.getMessage());
+            he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
+            try {he.getRequestBody().close(); }catch(Exception e1){}
+            try {he.getResponseBody().close(); }catch(Exception e1){}
+            return;
+        }
+
+        try {
+            boolean result = proxyToDHT(he, url);
+            if (result) {
+                return;
+            }
+        } catch (RoutingException e) {
+            logger.info(e.getMessage());
+        }
+        proxyToOriginalServer(he, url);
+    }
+
+    private void setResponseHeaders(Headers responseHeaders, Map<String, List<String>> headerFields) {
+        for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
+            String key = entry.getKey();
+            List<String> values = entry.getValue();
+            if (key != null) {
+                responseHeaders.put(key, values);
+            }
+        }
+    }
+
 }
