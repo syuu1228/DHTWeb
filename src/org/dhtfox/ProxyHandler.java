@@ -58,17 +58,18 @@ public class ProxyHandler implements HttpHandler {
     public boolean proxyToDHT(HttpExchange he, ID key, URL url) throws RoutingException {
         logger.info("request key to DHT:{}", key);
         Set<ValueInfo<String>> remoteAddrs = dht.get(key);
+        logger.info("got {} entries", remoteAddrs.size());
         for (ValueInfo<String> v : remoteAddrs) {
             HttpURLConnection connection = null;
             try {
                 URL remoteUrl = new URL("http://"+ v.getValue() + "/request/" + url.toString());
-                logger.info("Got url from DHT: [}", remoteUrl);
+                logger.info("Got url from DHT: {}", remoteUrl);
                 connection = (HttpURLConnection) remoteUrl.openConnection(proxy);
                 connection.setConnectTimeout(httpTimeout);
                 connection.connect();
                 int response = connection.getResponseCode();
+                logger.info("HTTP response: {}", response);
                 if (response == HttpURLConnection.HTTP_OK) {
-                    logger.info("HTTP response == OK");
                     setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
                     he.sendResponseHeaders(HttpURLConnection.HTTP_OK, connection.getContentLength());
                     OutputStream out = he.getResponseBody();
@@ -76,7 +77,7 @@ public class ProxyHandler implements HttpHandler {
                     try {
                         HttpUtil.sendBody(out, in, connection.getContentLength());
                     } catch (IOException e) {
-                        logger.info(e.getMessage());
+                        logger.warn(e.getMessage(), e);
                     } finally {
                         try {
                             out.close();
@@ -95,7 +96,7 @@ public class ProxyHandler implements HttpHandler {
                     }
                 }
             } catch (IOException e) {
-                logger.info(e.getMessage());
+                logger.warn(e.getMessage(), e);
             } finally {
                 try {
                     connection.disconnect();
