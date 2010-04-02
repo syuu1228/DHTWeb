@@ -27,10 +27,10 @@ public class RoutingAlgorithmFactory {
 	private final static Logger logger = Logger.getLogger("routing");
 
 	private final static Class/*<RoutingAlgorithmProvider>*/[] PROVIDERS = {
-//		ow.routing.chord.ChordProvider.class,					// "Chord"
+		ow.routing.chord.ChordProvider.class,					// "Chord"
 		ow.routing.kademlia.KademliaProvider.class,			// "Kademlia"
 //		ow.routing.koorde.KoordeProvider.class,				// "Koorde"
-//		ow.routing.linearwalker.LinearWalkerProvider.class,	// "LinearWalker"
+		ow.routing.linearwalker.LinearWalkerProvider.class,	// "LinearWalker"
 //		ow.routing.pastry.PastryProvider.class,				// "Pastry"
 //		ow.routing.tapestry.TapestryProvider.class			// "Tapestry"
 	};

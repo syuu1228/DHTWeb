@@ -26,7 +26,7 @@ public class DirectoryFactory {
 	private final static Logger logger = Logger.getLogger("directory");
 
 	private final static Class/*<DirectoryProvider>*/[] PROVIDERS = {
-//		ow.directory.inmemory.VolatileMapProvider.class,		// "VolatileMap"
+		ow.directory.inmemory.VolatileMapProvider.class,		// "VolatileMap"
 		ow.directory.inmemory.PersistentMapProvider.class,	// "PersistentMap"
 //		ow.directory.berkeleydb.BerkeleyDBProvider.class		// "BerkeleyDB"
 	};
