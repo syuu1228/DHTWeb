@@ -44,6 +44,12 @@ java.io.Serializable
 ow.messaging.Message
 ow.messaging.udp.UDPMessagingMessageFactory
 ow.messaging.Tag
+||:ow.directory.inmemory.VolatileMapProvider
+ow.directory.inmemory.SingleValueHashDirectory
+ow.directory.DirectoryProvider
+ow.directory.inmemory.VolatileMapProvider
+ow.directory.inmemory.MultipleValueHashDirectory
+java.lang.Exception
 ||:ow.directory.DirectoryConfiguration$HeapOverflowAction
 [Low.directory.DirectoryConfiguration$HeapOverflowAction;
 java.lang.Enum
@@ -124,7 +130,9 @@ java.lang.Object
 java.lang.Integer
 ow.stat.impl.StatMessageFactory
 ||:ow.messaging.udp.UDPMessagingProvider
+org.slf4j.Logger
 ow.messaging.MessagingConfiguration
+org.slf4j.LoggerFactory
 java.net.UnknownHostException
 ow.messaging.timeoutcalc.RTTBasedTimeoutCalculator
 ow.messaging.AbstractMessagingProvider
@@ -135,8 +143,8 @@ java.lang.Throwable
 java.util.Iterator
 java.util.HashMap
 ow.messaging.MessagingAddress
-ow.messaging.udp.UDPMessagingConfiguration
 java.net.InetAddress
+ow.messaging.udp.UDPMessagingConfiguration
 java.lang.Integer
 ow.messaging.udp.UDPMessageReceiver
 ow.messaging.InetMessagingAddress
@@ -317,8 +325,8 @@ ow.messaging.MessagingConfiguration
 ow.id.IDAddressPair
 ow.directory.DirectoryConfiguration
 ow.messaging.MessageSender
-ow.messaging.MessagingProvider
 [Low.routing.RoutingResult;
+ow.messaging.MessagingProvider
 ow.messaging.MessageReceiver
 ow.dht.DHTConfiguration
 [Ljava.util.Set;
@@ -1619,6 +1627,7 @@ ow.dht.impl.CHTImpl
 java.lang.Throwable
 ow.routing.RoutingService
 ow.directory.DirectoryConfiguration
+java.lang.UnsupportedOperationException
 ow.dht.ValueInfo
 java.lang.Exception
 ow.routing.RoutingHop
@@ -1767,6 +1776,7 @@ java.security.NoSuchProviderException
 java.util.logging.Logger
 [Ljava.lang.Class;
 java.lang.Object
+ow.directory.inmemory.VolatileMapProvider
 java.lang.Exception
 ||:ow.messaging.timeoutcalc.TimeoutCalculator
 java.lang.Object
@@ -2120,7 +2130,6 @@ ow.routing.linearwalker.SuccessorList
 java.lang.Object
 java.util.logging.Level
 ||:org.dhtfox.ProxyHandler
-ow.dht.DHTConfiguration
 java.lang.StringBuilder
 org.slf4j.Logger
 java.net.MalformedURLException
@@ -2137,6 +2146,7 @@ java.io.IOException
 java.lang.Throwable
 java.util.Iterator
 com.sun.net.httpserver.HttpExchange
+ow.messaging.MessagingAddress
 ow.dht.ValueInfo
 java.lang.Exception
 java.io.InputStream

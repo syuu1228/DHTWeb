@@ -362,4 +362,9 @@ public final class CHTImpl<V extends Serializable> implements DHT<V> {
 	public String getRoutingTableString(int verboseLevel) {
 		return "";
 	}
+
+    @Override
+    public MessagingAddress getSelfAddress() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }

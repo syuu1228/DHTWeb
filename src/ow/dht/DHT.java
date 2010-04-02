@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.Set;
 
 import ow.id.ID;
+import ow.messaging.MessagingAddress;
 import ow.routing.RoutingException;
 import ow.util.HighLevelService;
 
@@ -138,6 +139,8 @@ public interface DHT<V extends Serializable> extends HighLevelService {
 
 	// common to DHT and Mcast
 	DHTConfiguration getConfiguration();
+
+    public MessagingAddress getSelfAddress();
 
 	//
 	// Container classes

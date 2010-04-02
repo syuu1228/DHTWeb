@@ -90,6 +90,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	// members for put operations
 	protected ByteArray hashedSecretForPut;
 	protected long ttlForPut;
+    MessagingProvider msgProvider;
+        public MessagingAddress getSelfAddress() { return msgProvider.getSelfAddress(); }
 
 	public BasicDHTImpl(short applicationID, short applicationVersion,
 			DHTConfiguration config, ID selfID /* possibly null */)
@@ -100,7 +102,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				RoutingAlgorithmFactory.getAlgorithmID(config.getRoutingAlgorithm()),
 				applicationID, applicationVersion);
 
-		MessagingProvider msgProvider = MessagingFactory.getProvider(config.getMessagingTransport(), messageSignature);
+		msgProvider = MessagingFactory.getProvider(config.getMessagingTransport(), messageSignature);
 		if (config.getSelfAddress() != null) {
 			msgProvider.setSelfAddress(config.getSelfAddress());
 		}

@@ -100,4 +100,6 @@ public interface MessagingProvider {
 	 * Sets the message signature.
 	 */
 	byte[] setMessageSignature(byte[] signature);
+
+        MessagingAddress getSelfAddress();
 }

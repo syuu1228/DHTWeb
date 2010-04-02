@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
 import ow.dht.ValueInfo;
 import ow.id.ID;
+import ow.messaging.MessagingAddress;
 import ow.routing.RoutingException;
 
 /**
@@ -167,18 +168,14 @@ public class ProxyHandler implements HttpHandler {
         try {
             boolean result = proxyToDHT(he, key, url);
             if (result) {
+                putCache(key);
                 return;
             }
         } catch (RoutingException e) {
             logger.info(e.getMessage());
         }
         proxyToOriginalServer(he, url);
-        String selfAddress = dht.getConfiguration().getSelfAddress();
-        try {
-            dht.put(key, selfAddress + ":" + port);
-        } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
-        }
+        putCache(key);
     }
 
     private void setResponseHeaders(Headers responseHeaders, Map<String, List<String>> headerFields) {
@@ -188,6 +185,16 @@ public class ProxyHandler implements HttpHandler {
             if (key != null) {
                 responseHeaders.put(key, values);
             }
+        }
+    }
+
+    private void putCache(ID key) {
+        MessagingAddress selfAddress = dht.getSelfAddress();
+        logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
+        try {
+            dht.put(key, selfAddress.getHostAddress() + ":" + port);
+        } catch (Exception e) {
+            logger.warn(e.getMessage(), e);
         }
     }
 

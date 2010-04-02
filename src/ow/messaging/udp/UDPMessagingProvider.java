@@ -23,6 +23,8 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ow.messaging.AbstractMessagingProvider;
 import ow.messaging.InetMessagingAddress;
@@ -39,6 +41,7 @@ import ow.messaging.timeoutcalc.TimeoutCalculator;
  * Call MessagingFactory#getProvider() to obtain a provider.
  */
 public class UDPMessagingProvider extends AbstractMessagingProvider {
+        Logger logger = LoggerFactory.getLogger(UDPMessagingProvider.class);
 	private final static String NAME = "UDP";
 
 	private final Map<Integer,UDPMessageReceiver> receiverTable =
@@ -123,11 +126,20 @@ public class UDPMessagingProvider extends AbstractMessagingProvider {
 
 	public void setSelfAddress(String host) throws UnknownHostException {
 		this.selfInetAddress = InetAddress.getByName(host);
-
+            logger.info("selfAddress:{}", selfInetAddress.toString());
 		synchronized (this.receiverTable) {
 			for (UDPMessageReceiver receiver: this.receiverTable.values()) {
 				receiver.setSelfAddress(host);
 			}
 		}
 	}
+
+        public MessagingAddress getSelfAddress() {
+            synchronized (this.receiverTable) {
+                for (UDPMessageReceiver receiver: this.receiverTable.values()) {
+                    return receiver.getSelfAddress();
+                }
+            }
+            return null;
+        }
 }
