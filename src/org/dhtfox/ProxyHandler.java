@@ -63,7 +63,13 @@ public class ProxyHandler implements HttpHandler {
             HttpURLConnection connection = null;
             try {
                 URL remoteUrl = new URL("http://"+ v.getValue() + "/request/" + url.toString());
+                MessagingAddress selfAddress = dht.getSelfAddress();
+                if(v.getValue().equals(selfAddress.getHostAddress() + ":" + port)) {
+                    logger.info("Skip from myself: {}", remoteUrl);
+                    continue;
+                }
                 logger.info("Got url from DHT: {}", remoteUrl);
+
                 connection = (HttpURLConnection) remoteUrl.openConnection(proxy);
                 connection.setConnectTimeout(httpTimeout);
                 connection.connect();
