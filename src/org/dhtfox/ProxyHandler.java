@@ -44,23 +44,23 @@ public class ProxyHandler implements HttpHandler {
 
     final static Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
     private final DHT<String> dht;
-    private final int httpTimeout;
+    private final int port, httpTimeout;
     private final Proxy proxy;
 
-    ProxyHandler(DHT<String> dht, Proxy proxy, int httpTimeout) {
+    ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout) {
         this.dht = dht;
         this.proxy = proxy;
+        this.port = port;
         this.httpTimeout = httpTimeout;
     }
 
-    public boolean proxyToDHT(HttpExchange he, URL url) throws RoutingException {
-        ID key = ID.getSHA1BasedID(url.toString().getBytes());
+    public boolean proxyToDHT(HttpExchange he, ID key, URL url) throws RoutingException {
         logger.info("request key to DHT:{}", key);
         Set<ValueInfo<String>> remoteAddrs = dht.get(key);
         for (ValueInfo<String> v : remoteAddrs) {
             HttpURLConnection connection = null;
             try {
-                URL remoteUrl = new URL(v.getValue());
+                URL remoteUrl = new URL("http://"+ v.getValue() + "/request/" + url.toString());
                 logger.info("Got url from DHT: [}", remoteUrl);
                 connection = (HttpURLConnection) remoteUrl.openConnection(proxy);
                 connection.setConnectTimeout(httpTimeout);
@@ -144,7 +144,7 @@ public class ProxyHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange he) throws IOException {
         URL url = null;
-
+        ID key = null;
         if (!he.getRemoteAddress().getAddress().isLoopbackAddress()) {
             logger.info("/proxy/ accessed from external address:" + he.getRemoteAddress());
             he.sendResponseHeaders(HttpURLConnection.HTTP_FORBIDDEN, 0);
@@ -155,6 +155,7 @@ public class ProxyHandler implements HttpHandler {
         try {
             url = new URL(he.getRequestURI().getPath().replaceFirst("^/proxy/", ""));
             logger.info("url:{}", url);
+            key = ID.getSHA1BasedID(url.toString().getBytes());
         } catch (MalformedURLException e) {
             logger.info(e.getMessage());
             he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
@@ -164,7 +165,7 @@ public class ProxyHandler implements HttpHandler {
         }
 
         try {
-            boolean result = proxyToDHT(he, url);
+            boolean result = proxyToDHT(he, key, url);
             if (result) {
                 return;
             }
@@ -172,6 +173,12 @@ public class ProxyHandler implements HttpHandler {
             logger.info(e.getMessage());
         }
         proxyToOriginalServer(he, url);
+        String selfAddress = dht.getConfiguration().getSelfAddress();
+        try {
+            dht.put(key, selfAddress + ":" + port);
+        } catch (Exception e) {
+            logger.warn(e.getMessage(), e);
+        }
     }
 
     private void setResponseHeaders(Headers responseHeaders, Map<String, List<String>> headerFields) {

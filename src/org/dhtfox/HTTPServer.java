@@ -33,6 +33,7 @@ public class HTTPServer {
     private final DHT<String> dht;
     private Proxy proxy;
     private final JSObject cacheCallback;
+    private HttpServer server = null;
 
     public static void main(String[] args) throws IOException {
         HTTPServer httpd = new HTTPServer(8080, null, Proxy.NO_PROXY, 1000, null);
@@ -48,11 +49,15 @@ public class HTTPServer {
     }
 
     public void bind() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        HttpHandler proxyHandler = new ProxyHandler(dht, proxy, httpTimeout);
+        server = HttpServer.create(new InetSocketAddress(port), 0);
+        HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port, httpTimeout);
         HttpHandler requestHandler = new RequestHandler(cacheCallback, port);
         server.createContext("/proxy/", proxyHandler);
         server.createContext("/request/", requestHandler);
         server.start();
+    }
+
+    public void stop() {
+        server.stop(port);
     }
 }

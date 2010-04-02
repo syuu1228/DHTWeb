@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dareka.processor.HttpResponseHeader;
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -74,6 +75,7 @@ public class RequestHandler implements HttpHandler {
             }
             return;
         }
+        String fileName = null;
         try {
             String responseHeader = (String) cacheEntry.call("getMetaDataElement", new Object[]{"response-head"});
             logger.info("responseHeader:{}", responseHeader);
@@ -82,13 +84,14 @@ public class RequestHandler implements HttpHandler {
             for (Map.Entry<String, List<String>> entry : parser.getMessageHeaders().entrySet()) {
                 String key = entry.getKey();
                 List<String> values = entry.getValue();
-                for(String value : values)
+                for (String value : values) {
                     logger.info("key:{} value:{}", key, value);
+                }
                 if (key != null) {
                     headers.put(key, values);
                 }
             }
-            String fileName = (String)callback.call("readAll", new Object[]{cacheEntry});
+            fileName = (String) callback.call("readAll", new Object[]{cacheEntry});
             logger.info("fileName:{}", fileName);
             if (fileName == null) {
                 he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
@@ -107,8 +110,9 @@ public class RequestHandler implements HttpHandler {
             OutputStream out = he.getResponseBody();
             byte[] buf = new byte[65535];
             int size = -1;
-            while((size = in.read(buf)) != -1)
+            while ((size = in.read(buf)) != -1) {
                 out.write(buf);
+            }
             out.flush();
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
@@ -122,6 +126,8 @@ public class RequestHandler implements HttpHandler {
                 he.getResponseBody().close();
             } catch (Exception e1) {
             }
+            File file = new File(fileName);
+            file.delete();
         }
     }
 }
