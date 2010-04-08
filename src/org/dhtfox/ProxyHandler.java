@@ -65,6 +65,7 @@ public class ProxyHandler implements HttpHandler {
                 URL remoteUrl = new URL("http://"+ v.getValue() + "/request/" + url.toString());
                 MessagingAddress selfAddress = dht.getSelfAddress();
                 if(v.getValue().equals(selfAddress.getHostAddress() + ":" + port)) {
+                    //XXX maybe better to redirect
                     logger.info("Skip from myself: {}", remoteUrl);
                     continue;
                 }
@@ -76,11 +77,13 @@ public class ProxyHandler implements HttpHandler {
                 int response = connection.getResponseCode();
                 logger.info("HTTP response: {}", response);
                 if (response == HttpURLConnection.HTTP_OK) {
-                    setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
-                    he.sendResponseHeaders(HttpURLConnection.HTTP_OK, connection.getContentLength());
-                    OutputStream out = he.getResponseBody();
-                    InputStream in = connection.getInputStream();
+                    InputStream in = null;
+                    OutputStream out = null;
                     try {
+                        setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
+                        he.sendResponseHeaders(HttpURLConnection.HTTP_OK, connection.getContentLength());
+                        in = connection.getInputStream();
+                        out = he.getResponseBody();
                         HttpUtil.sendBody(out, in, connection.getContentLength());
                     } catch (IOException e) {
                         logger.warn(e.getMessage(), e);
@@ -160,8 +163,17 @@ public class ProxyHandler implements HttpHandler {
             try {he.getResponseBody().close(); }catch(Exception e){}
             return;
         }
+        boolean dhttest = false, passthroughtest = false;
         try {
-            url = new URL(he.getRequestURI().getPath().replaceFirst("^/proxy/", ""));
+            if (he.getRequestURI().getPath().startsWith("/dhttest/")) {
+                url = new URL(he.getRequestURI().getPath().replaceFirst("^/dhttest/", ""));
+                dhttest = true;
+            } else if(he.getRequestURI().getPath().startsWith("/passthroughtest/")) {
+                url = new URL(he.getRequestURI().getPath().replaceFirst("^/passthroughtest/", ""));
+                passthroughtest = true;
+            } else {
+                url = new URL(he.getRequestURI().getPath().replaceFirst("^/proxy/", ""));
+            }
             logger.info("url:{}", url);
             key = ID.getSHA1BasedID(url.toString().getBytes());
         } catch (MalformedURLException e) {
@@ -172,10 +184,23 @@ public class ProxyHandler implements HttpHandler {
             return;
         }
 
+        if (!passthroughtest)
         try {
             boolean result = proxyToDHT(he, key, url);
             if (result) {
                 putCache(key);
+                return;
+            }
+            if (dhttest) {
+                he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
+                try {
+                    he.getRequestBody().close();
+                } catch (Exception e1) {
+                }
+                try {
+                    he.getResponseBody().close();
+                } catch (Exception e1) {
+                }
                 return;
             }
         } catch (RoutingException e) {
