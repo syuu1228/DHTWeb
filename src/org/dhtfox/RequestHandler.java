@@ -77,6 +77,7 @@ public class RequestHandler implements HttpHandler {
         }
         String fileName = null;
         try {
+            int contentLength = 0;
             String responseHeader = (String) cacheEntry.call("getMetaDataElement", new Object[]{"response-head"});
             logger.info("responseHeader:{}", responseHeader);
             HttpResponseHeader parser = new HttpResponseHeader(responseHeader);
@@ -84,6 +85,9 @@ public class RequestHandler implements HttpHandler {
             for (Map.Entry<String, List<String>> entry : parser.getMessageHeaders().entrySet()) {
                 String key = entry.getKey();
                 List<String> values = entry.getValue();
+                if (key.equals("Content-Length")) {
+                    contentLength = Integer.parseInt(values.get(0));
+                }
                 for (String value : values) {
                     logger.info("key:{} value:{}", key, value);
                 }
@@ -106,7 +110,7 @@ public class RequestHandler implements HttpHandler {
                 return;
             }
             BufferedInputStream in = new BufferedInputStream(new FileInputStream(fileName));
-            he.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
+            he.sendResponseHeaders(HttpURLConnection.HTTP_OK, contentLength);
             OutputStream out = he.getResponseBody();
             byte[] buf = new byte[65535];
             int size = -1;
