@@ -54,7 +54,6 @@ function CacheCallback() {
             var cacheEntry = cacheSession.openCacheEntry(url, Ci.nsICache.ACCESS_READ, true);
             return cacheEntry;
         } catch(e) {
-            alert(e);
             return null;
         }
     }
