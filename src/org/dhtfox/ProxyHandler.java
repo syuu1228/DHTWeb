@@ -64,8 +64,9 @@ public class ProxyHandler implements HttpHandler {
             try {
                 URL remoteUrl = new URL("http://"+ v.getValue() + "/request/" + url.toString());
                 MessagingAddress selfAddress = dht.getSelfAddress();
+
                 if(v.getValue().equals(selfAddress.getHostAddress() + ":" + port)) {
-                    //XXX maybe better to redirect
+                    //XXX firefox deadlocks if we access its
                     logger.info("Skip from myself: {}", remoteUrl);
                     continue;
                 }

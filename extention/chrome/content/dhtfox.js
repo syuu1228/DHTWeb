@@ -47,16 +47,14 @@ function LoggerCallback() {
 var cacheCounter = 0;
 function CacheCallback() {
     this.getCacheEntry = function(url) {
+        const cacheService = Cc["@mozilla.org/network/cache-service;1"].getService(Ci.nsICacheService);
         try {
-            const cacheService = Cc["@mozilla.org/network/cache-service;1"].getService(Ci.nsICacheService);
             var cacheSession = cacheService.createSession("HTTP", Ci.nsICache.STORE_ANYWHERE, true);
+        	var cacheEntry = cacheSession.openCacheEntry(url, Ci.nsICache.ACCESS_READ, true);
+        	return cacheEntry;
         } catch(e) {
             return null;
         }
-        
-            cacheSession.doomEntriesIfExpired = false;
-            var cacheEntry = cacheSession.openCacheEntry(url, Ci.nsICache.ACCESS_READ, true);
-            return cacheEntry;
     }
     this.readAll = function(cacheEntry) {
         try {

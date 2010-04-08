@@ -1,2 +1,3 @@
 content dhtfox chrome/content/
 
+overlay chrome://browser/content/browser.xul chrome://dhtfox/content/dhtfox.xul

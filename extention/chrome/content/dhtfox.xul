@@ -1,5 +1,10 @@
-<?xml version="1.0"?>
-<window id="main" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-    <script type="application/x-javascript" src="chrome://dhtfox/content/dhtfox.js" />
-    <label value="dhtfox" />
-</window>
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE overlay>
+<overlay id="dhtfox-overlay"
+         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<script type="application/x-javascript" src="chrome://dhtfox/content/dhtfox.js" />
+	<statusbar id="status-bar">
+	  <label value="DHTFox" />
+	</statusbar>
+</overlay>

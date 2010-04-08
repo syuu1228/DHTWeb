@@ -113,7 +113,7 @@ public class RequestHandler implements HttpHandler {
             byte[] buf = new byte[65535];
             int size = -1;
             while ((size = in.read(buf)) != -1) {
-                out.write(buf);
+                out.write(buf, 0, size);
             }
             out.flush();
         } catch (Exception e) {
