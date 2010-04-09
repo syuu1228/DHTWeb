@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <!DOCTYPE overlay>
 <overlay id="dhtfox-overlay"
          xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 	<script type="application/x-javascript" src="chrome://dhtfox/content/dhtfox.js" />
 	<statusbar id="status-bar">
-	  <label value="DHTFox" />
+		<statusbarpanel id="status-bar-panel">
+			<label value="DHTFox" />
+		</statusbarpanel>
 	</statusbar>
 </overlay>
