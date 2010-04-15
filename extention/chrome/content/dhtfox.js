@@ -40,10 +40,22 @@ function startDHT() {
 			var result = DHTFox.start(myClass);
 			if (result == false)
 				alert("DHT start failed");
+			else
+				alert("DHT started");
 		}
 	} catch (e) {
 	    alert(e);
 	}
 }
+function eventListener(ev) {
+	try {
+		var target = ev.target.wrappedJSObject;
+		target.dhtFoxEnabled = 1;
+		target.dhtFoxProxyURL = "http://127.0.0.1:8080/proxy/";
+	} catch (ex) {
+		alert(ex);
+	}
+}
 
 window.addEventListener("load", function() {startDHT();}, true);
+window.addEventListener("DHTFoxRequest", eventListener, false, true);

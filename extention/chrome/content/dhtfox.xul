@@ -2,6 +2,7 @@
 <!DOCTYPE overlay>
 <overlay id="dhtfox-overlay"
          xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<script type="application/x-javascript" src="http://nazo.yi.org/nazonojs/objectdump.js" />
 	<script type="application/x-javascript" src="chrome://dhtfox/content/dhtfox.js" />
 	<statusbar id="status-bar">
 		<statusbarpanel id="status-bar-panel">
