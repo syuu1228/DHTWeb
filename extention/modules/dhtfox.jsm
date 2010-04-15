@@ -2,6 +2,7 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 
 const EXTENSION_PATH = Cc["@mozilla.org/extensions/manager;1"].getService(Ci.nsIExtensionManager).getInstallLocation("dhtfox@dhtfox.org").getItemLocation("dhtfox@dhtfox.org");
+const LOGBACK_FILE_PATH = EXTENSION_PATH.path.replace(/\\/g,"/") + "/java/logback.xml";
 let EXPORTED_SYMBOLS = ["DHTFox"];
 var consoleService = Components.classes["@mozilla.org/consoleservice;1"].
      getService(Components.interfaces.nsIConsoleService);
@@ -66,7 +67,7 @@ let DHTFox = {
 		if (this.javaInstance != null)
 			return true;
 		this.javaInstance = myClass.newInstance();
-		return this.javaInstance.start("aaa", false, "125.6.175.11:3997", 3997, 8080, new CacheCallback(), new LoggerCallback());
+		return this.javaInstance.start("aaa", false, "125.6.175.11:3997", 3997, 8080, new CacheCallback(), new LoggerCallback(), LOGBACK_FILE_PATH);
 	},
 	stop: function() {
 		this.javaInstance.stop();

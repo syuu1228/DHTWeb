@@ -33,7 +33,9 @@ function startDHT() {
 			urlArray[3] = new java.net.URL(JAR_DIR_PATH + "miniupnpc.jar");
 			urlArray[4] = new java.net.URL(JAR_DIR_PATH + "slf4j-api-1.5.11.jar");
 			urlArray[5] = new java.net.URL(JAR_DIR_PATH + "FirefoxLogger.jar");
-
+			urlArray[6] = new java.net.URL(JAR_DIR_PATH + "logback-classic-0.9.20.jar");
+			urlArray[7] = new java.net.URL(JAR_DIR_PATH + "logback-core-0.9.20.jar");
+			
 			var cl = java.net.URLClassLoader.newInstance(urlArray);
 			policyAdd(cl, urlArray);
 			var myClass = cl.loadClass('org.dhtfox.DHTFox');
