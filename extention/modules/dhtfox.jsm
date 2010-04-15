@@ -2,16 +2,14 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 
 let EXPORTED_SYMBOLS = ["DHTFox"];
+var consoleService = Components.classes["@mozilla.org/consoleservice;1"].
+     getService(Components.interfaces.nsIConsoleService);
 
 function LoggerCallback() {
     this.log = function(msg) {
-        var consoleService = Cc["@mozilla.org/consoleservice;1"]
-        .getService(Ci.nsIConsoleService);
         consoleService.logStringMessage(msg);
     }
     this.error = function(msg) {
-        var consoleService = Cc["@mozilla.org/consoleservice;1"]
-        .getService(Ci.nsIConsoleService);
         consoleService.logStringMessage(msg);
     }
 }
@@ -55,7 +53,7 @@ function CacheCallback() {
             cacheEntry.close();
             return filePath.path;
         } catch(e) {
-            alert(e);
+	    consoleService.logStringMessage(e);
             return null;
         }
     }
