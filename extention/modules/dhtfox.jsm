@@ -1,6 +1,7 @@
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
+const EXTENSION_PATH = Cc["@mozilla.org/extensions/manager;1"].getService(Ci.nsIExtensionManager).getInstallLocation("dhtfox@dhtfox.org").getItemLocation("dhtfox@dhtfox.org");
 let EXPORTED_SYMBOLS = ["DHTFox"];
 var consoleService = Components.classes["@mozilla.org/consoleservice;1"].
      getService(Components.interfaces.nsIConsoleService);
