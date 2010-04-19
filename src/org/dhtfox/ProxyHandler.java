@@ -29,6 +29,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
@@ -47,12 +48,14 @@ public class ProxyHandler implements HttpHandler {
     private final DHT<String> dht;
     private final int port, httpTimeout;
     private final Proxy proxy;
+    private final ExecutorService putExecutor;
 
-    ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout) {
+    ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout, ExecutorService putExecutor) {
         this.dht = dht;
         this.proxy = proxy;
         this.port = port;
         this.httpTimeout = httpTimeout;
+        this.putExecutor = putExecutor;
     }
 
     public boolean proxyToDHT(HttpExchange he, ID key, URL url) throws RoutingException {
@@ -66,9 +69,17 @@ public class ProxyHandler implements HttpHandler {
                 MessagingAddress selfAddress = dht.getSelfAddress();
 
                 if(v.getValue().equals(selfAddress.getHostAddress() + ":" + port)) {
-                    //XXX firefox deadlocks if we access its
-                    logger.info("Skip from myself: {}", remoteUrl);
-                    continue;
+                    he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_MODIFIED, 0);
+                    try {
+                        he.getRequestBody().close();
+                    } catch (Exception e1) {
+                    }
+                    try {
+                        he.getResponseBody().close();
+                    } catch (Exception e1) {
+                    }
+                    logger.info("Got self url, sent 403: {}", remoteUrl);
+                    return true;
                 }
                 logger.info("Got url from DHT: {}", remoteUrl);
 
@@ -222,13 +233,7 @@ public class ProxyHandler implements HttpHandler {
     }
 
     private void putCache(ID key) {
-        MessagingAddress selfAddress = dht.getSelfAddress();
-        logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
-        try {
-            dht.put(key, selfAddress.getHostAddress() + ":" + port);
-        } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
-        }
+        putExecutor.submit(new PutTask(dht, port, key));
     }
 
 }

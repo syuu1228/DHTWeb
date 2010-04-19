@@ -15,16 +15,17 @@
  */
 package org.dhtfox;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
 import java.net.MalformedURLException;
 import java.net.Proxy;
 import java.net.URL;
-import java.util.logging.Level;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Marker;
 import org.slf4j.bridge.SLF4JBridgeHandler;
-import org.slf4j.impl.FirefoxLogger;
 import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
@@ -32,6 +33,7 @@ import ow.dht.DHTFactory;
 import ow.id.ID;
 import ow.messaging.upnp.Mapping;
 import ow.messaging.upnp.UPnPManager;
+import ow.tool.dhtshell.DHTShell;
 
 public class DHTFox {
 
@@ -48,15 +50,25 @@ public class DHTFox {
     private HTTPServer http = null;
     private boolean upnpEnable;
     private Mapping httpMapping;
+    private ExecutorService putExecutor = Executors.newSingleThreadExecutor();
 
     public DHT<String> getDHT() {
         return dht;
     }
 
-    public boolean start(String secret, boolean upnpEnable, String bootstrapNode, int dhtPort, int httpPort, JSObject cacheCallback, JSObject loggerCallback) {
+    public boolean start(String secret, boolean upnpEnable, String bootstrapNode, int dhtPort, int httpPort, JSObject cacheCallback, JSObject loggerCallback, String logbackFilePath) {
         this.upnpEnable = upnpEnable;
         try {
-            FirefoxLogger.setJSCallback(loggerCallback);
+            LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+            JoranConfigurator configurator = new JoranConfigurator();
+            configurator.setContext(lc);
+            lc.reset();
+            configurator.doConfigure(logbackFilePath);
+        } catch (Exception e) {
+            loggerCallback.call("log", new Object[]{e.getMessage()});
+            return false;
+        }
+        try {
             this.hashedSecret = new ByteArray(secret.getBytes("UTF-8")).hashWithSHA1();
             DHTConfiguration config = DHTFactory.getDefaultConfiguration();
             /*
@@ -72,10 +84,14 @@ public class DHTFox {
             config.setDoUPnPNATTraversal(upnpEnable);
             config.setContactPort(dhtPort);
             dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_MAJOR_VERSION, config, null);
-            dht.setHashedSecretForPut(hashedSecret);
-            if (bootstrapNode != null)
+//            dht.setHashedSecretForPut(hashedSecret);
+            if (bootstrapNode != null) {
                 dht.joinOverlay(bootstrapNode);
-            http = new HTTPServer(httpPort, dht, PROXY_SETTING, HTTP_REQUEST_TIMEOUT, cacheCallback);
+            }
+            DHTShell shell = new DHTShell();
+            shell.init(dht, 9999);
+
+            http = new HTTPServer(httpPort, dht, PROXY_SETTING, HTTP_REQUEST_TIMEOUT, cacheCallback, putExecutor);
             http.bind();
             if (upnpEnable) {
                 UPnPManager upnp = UPnPManager.getInstance();
@@ -98,16 +114,9 @@ public class DHTFox {
         }
     }
 
-    public boolean registerCache(String u)  {
-        try {
-            URL url = new URL(new URL(u).getPath().replaceFirst("^/proxy/", ""));
-            ID key = ID.getSHA1BasedID(url.toString().getBytes());
-            dht.put(key, url.toString());
-            logger.info("url:{}", url);
-            return true;
-        } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
-            return false;
-        }
+    public void registerCache(String u) throws MalformedURLException {
+        URL url = new URL(new URL(u).getPath().replaceFirst("^/proxy/", ""));
+        ID key = ID.getSHA1BasedID(url.toString().getBytes());
+        putExecutor.submit(new PutTask(dht, url.getPort(), key));
     }
 }

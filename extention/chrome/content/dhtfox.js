@@ -35,6 +35,7 @@ function startDHT() {
 			urlArray[5] = new java.net.URL(JAR_DIR_PATH + "FirefoxLogger.jar");
 			urlArray[6] = new java.net.URL(JAR_DIR_PATH + "logback-classic-0.9.20.jar");
 			urlArray[7] = new java.net.URL(JAR_DIR_PATH + "logback-core-0.9.20.jar");
+			urlArray[8] = new java.net.URL(JAR_DIR_PATH + "commons-cli-1.1.jar");
 			
 			var cl = java.net.URLClassLoader.newInstance(urlArray);
 			policyAdd(cl, urlArray);

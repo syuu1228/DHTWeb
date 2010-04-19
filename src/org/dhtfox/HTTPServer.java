@@ -20,6 +20,8 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import netscape.javascript.JSObject;
 import ow.dht.DHT;
 
@@ -28,29 +30,30 @@ import ow.dht.DHT;
  * @author syuu
  */
 public class HTTPServer {
-
-    private int port, httpTimeout;
+    private final int port, httpTimeout;
     private final DHT<String> dht;
-    private Proxy proxy;
+    private final Proxy proxy;
     private final JSObject cacheCallback;
-    private HttpServer server = null;
+    private final HttpServer server;
+    private final ExecutorService putExecutor;
 
     public static void main(String[] args) throws IOException {
-        HTTPServer httpd = new HTTPServer(8080, null, Proxy.NO_PROXY, 1000, null);
+        HTTPServer httpd = new HTTPServer(8080, null, Proxy.NO_PROXY, 1000, null, Executors.newSingleThreadExecutor());
         httpd.bind();
     }
 
-    public HTTPServer(int port, DHT<String> dht, Proxy proxy, int requestTimeout, JSObject cacheCallback) {
+    public HTTPServer(int port, DHT<String> dht, Proxy proxy, int requestTimeout, JSObject cacheCallback, ExecutorService putExecutor) throws IOException {
         this.port = port;
         this.dht = dht;
         this.proxy = proxy;
         this.httpTimeout = requestTimeout;
         this.cacheCallback = cacheCallback;
+        this.putExecutor = putExecutor;
+        this.server = HttpServer.create(new InetSocketAddress(port), 0);
     }
 
-    public void bind() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(port), 0);
-        HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port, httpTimeout);
+    public void bind() {
+        HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port, httpTimeout, putExecutor);
         HttpHandler requestHandler = new RequestHandler(cacheCallback, port);
         server.createContext("/proxy/", proxyHandler);
         server.createContext("/dhttest/", proxyHandler);
