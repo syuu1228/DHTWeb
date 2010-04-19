@@ -37,7 +37,7 @@ public class DHTFactory {
 	private final static Class[] PROVIDERS = {
 		ow.dht.impl.ChurnTolerantDHTProvider.class,	// "ChurnTolerantDHT", "DHT"
 		ow.dht.impl.BasicDHTProvider.class,			// "BasicDHT"
-		ow.dht.impl.CHTProvider.class,				// "CHT" (Centralized Hash Table)
+//		ow.dht.impl.CHTProvider.class,				// "CHT" (Centralized Hash Table)
 //		ow.dht.memcached.impl.MemcachedProvider.class	// "memcached" (memcached core)
 	};
 

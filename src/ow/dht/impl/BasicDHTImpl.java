@@ -605,6 +605,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		return ret;
 	}
 
+    @Override
+    public void removeGlobalValue(ID key, ValueInfo<V> value) throws Exception {
+        this.globalDir.remove(key, value);
+    }
+
+
 	//
 	// methods common to DHT and Mcast
 	//

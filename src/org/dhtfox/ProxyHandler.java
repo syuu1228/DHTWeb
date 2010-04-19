@@ -69,17 +69,8 @@ public class ProxyHandler implements HttpHandler {
                 MessagingAddress selfAddress = dht.getSelfAddress();
 
                 if(v.getValue().equals(selfAddress.getHostAddress() + ":" + port)) {
-                    he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_MODIFIED, 0);
-                    try {
-                        he.getRequestBody().close();
-                    } catch (Exception e1) {
-                    }
-                    try {
-                        he.getResponseBody().close();
-                    } catch (Exception e1) {
-                    }
-                    logger.info("Got self url, sent 403: {}", remoteUrl);
-                    return true;
+                    logger.info("Got self url, skipping: {}", remoteUrl);
+                    continue;
                 }
                 logger.info("Got url from DHT: {}", remoteUrl);
 

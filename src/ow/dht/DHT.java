@@ -136,6 +136,7 @@ public interface DHT<V extends Serializable> extends HighLevelService {
 	Set<ValueInfo<V>> getLocalValues(ID key);
 	Set<ID> getGlobalKeys();
 	Set<ValueInfo<V>> getGlobalValues(ID key);
+        void removeGlobalValue(ID key, ValueInfo<V> value) throws Exception;
 
 	// common to DHT and Mcast
 	DHTConfiguration getConfiguration();

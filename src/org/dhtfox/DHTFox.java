@@ -22,6 +22,8 @@ import java.net.Proxy;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,7 @@ public class DHTFox {
     private boolean upnpEnable;
     private Mapping httpMapping;
     private ExecutorService putExecutor = Executors.newSingleThreadExecutor();
+    private ScheduledExecutorService maintenanceExecutor = Executors.newScheduledThreadPool(1);
 
     public DHT<String> getDHT() {
         return dht;
@@ -90,6 +93,8 @@ public class DHTFox {
             }
             DHTShell shell = new DHTShell();
             shell.init(dht, 9999);
+
+            maintenanceExecutor.scheduleAtFixedRate(new LocalDataMaintenanceTask(dht, httpPort), 60, 60, TimeUnit.SECONDS);
 
             http = new HTTPServer(httpPort, dht, PROXY_SETTING, HTTP_REQUEST_TIMEOUT, cacheCallback, putExecutor);
             http.bind();
