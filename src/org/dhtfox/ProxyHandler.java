@@ -28,8 +28,10 @@ import java.net.Proxy;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
@@ -76,6 +78,9 @@ public class ProxyHandler implements HttpHandler {
 
                 connection = (HttpURLConnection) remoteUrl.openConnection(proxy);
                 connection.setConnectTimeout(httpTimeout);
+                connection.setRequestMethod(he.getRequestMethod());
+                setRequestProperties(connection, he.getRequestHeaders());
+                connection.setRequestProperty("Host", remoteUrl.getHost());
                 connection.connect();
                 int response = connection.getResponseCode();
                 logger.info("HTTP response: {}", response);
@@ -120,31 +125,43 @@ public class ProxyHandler implements HttpHandler {
         return false;
     }
 
-    private void proxyToOriginalServer(HttpExchange he, URL url) {
-        logger.info("Request proxying");
+    private boolean proxyToOriginalServer(HttpExchange he, URL url) {
+        logger.info("Request proxying:{}", url);
         HttpURLConnection connection = null;
         InputStream in = null;
         OutputStream out = null;
+        boolean result = false;
         try {
             connection = (HttpURLConnection)url.openConnection(proxy);
             connection.setConnectTimeout(httpTimeout);
+            connection.setRequestMethod(he.getRequestMethod());
+            setRequestProperties(connection, he.getRequestHeaders());
+            connection.setRequestProperty("Host", url.getHost());
             connection.connect();
-            setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
             int responseCode = connection.getResponseCode();
-            he.sendResponseHeaders(responseCode, connection.getContentLength());
-            in = connection.getInputStream();
-            out = he.getResponseBody();
-            HttpUtil.sendBody(out, in, connection.getContentLength());
+            logger.info("responseCode:{}", responseCode);
+            setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
+            he.sendResponseHeaders(responseCode, 0);
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                in = connection.getInputStream();
+                out = he.getResponseBody();
+                HttpUtil.sendBody(out, in, connection.getContentLength());
+                result = true;
+            }
         } catch (Exception e) {
-            e.printStackTrace();
             logger.warn(e.getMessage(), e);
         } finally {
             try {
-                out.close();
+                he.getRequestBody().close();
             } catch (Exception e) {
             }
             try {
-                in.close();
+                he.getResponseBody().close();
+            } catch (Exception e) {
+            }
+            try {
+                if(in != null)
+                    in.close();
             } catch (Exception e) {
             }
             try {
@@ -153,6 +170,7 @@ public class ProxyHandler implements HttpHandler {
             }
         }
         logger.info("Request done");
+        return result;
     }
 
     @Override
@@ -209,16 +227,36 @@ public class ProxyHandler implements HttpHandler {
         } catch (RoutingException e) {
             logger.info(e.getMessage());
         }
-        proxyToOriginalServer(he, url);
-        putCache(key);
+        boolean result = proxyToOriginalServer(he, url);
+        if (result)
+            putCache(key);
     }
 
     private void setResponseHeaders(Headers responseHeaders, Map<String, List<String>> headerFields) {
-        for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
+        for (Entry<String, List<String>> entry : headerFields.entrySet()) {
             String key = entry.getKey();
             List<String> values = entry.getValue();
             if (key != null) {
+                if (key.toLowerCase().equals("host"))
+                    continue;
+                for(String val : values)
+                    logger.info("response key:{} value:{}", key, values);
                 responseHeaders.put(key, values);
+            }
+        }
+    }
+
+    private void setRequestProperties(HttpURLConnection connection, Headers requestHeaders) {
+        for (Entry<String, List<String>> entry : requestHeaders.entrySet()) {
+            String key = entry.getKey();
+            List<String> values = entry.getValue();
+            if (key != null) {
+                if (key.toLowerCase().equals("host"))
+                    continue;
+                for (String val : values) {
+                    logger.info("request key:{} value:{}", key, values);
+                    connection.setRequestProperty(key, val);
+                }
             }
         }
     }
