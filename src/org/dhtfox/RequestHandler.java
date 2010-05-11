@@ -7,19 +7,17 @@ package org.dhtfox;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import dareka.processor.HttpResponseHeader;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
-import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +28,9 @@ import org.slf4j.LoggerFactory;
 public class RequestHandler implements HttpHandler {
 
     final static Logger logger = LoggerFactory.getLogger(RequestHandler.class);
-    private final JSObject callback;
     private final int port;
 
-    public RequestHandler(JSObject callback, int port) {
-        this.callback = callback;
+    public RequestHandler(int port) {
         this.port = port;
     }
 
@@ -42,13 +38,12 @@ public class RequestHandler implements HttpHandler {
     public void handle(HttpExchange he) throws IOException {
         logger.info("request handling");
 
-        URL url = null;
+        URI uri = null;
+        URI u = he.getRequestURI();
         try {
-            URI u = he.getRequestURI();
-            url = new URL("http://127.0.0.1:" + port + u.getPath().replaceFirst("^/request/", "/proxy/"));
-            logger.info("url:{}", url);
-        } catch (MalformedURLException e) {
-            logger.warn(e.getMessage(), e);
+            uri = new URI(u.getPath().replaceFirst("^/request/", ""));
+        } catch (URISyntaxException ex) {
+            logger.warn(ex.getMessage(), ex);
             he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
             try {
                 he.getRequestBody().close();
@@ -60,41 +55,13 @@ public class RequestHandler implements HttpHandler {
             }
             return;
         }
-        JSObject cacheEntry = null;
-        cacheEntry = (JSObject) callback.call("getCacheEntry", new Object[]{url.toString()});
-        if (cacheEntry == null) {
-            logger.info("cacheEntry == null");
-            he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
-            try {
-                he.getRequestBody().close();
-            } catch (Exception e1) {
-            }
-            try {
-                he.getResponseBody().close();
-            } catch (Exception e1) {
-            }
-            return;
-        }
-        String fileName = null;
-        File file = null;
+        logger.info("url:{}", uri);
+        File file = LocalResponseCache.getLocalFile(uri);
+        File headerFile = LocalResponseCache.getLocalHeader(uri);
+        FileInputStream fisHeader = null;
+        ObjectInputStream ois = null;
         try {
-            String responseHeader = (String) cacheEntry.call("getMetaDataElement", new Object[]{"response-head"});
-            logger.info("responseHeader:{}", responseHeader);
-            HttpResponseHeader parser = new HttpResponseHeader(responseHeader);
-            Headers headers = new Headers();
-            for (Map.Entry<String, List<String>> entry : parser.getMessageHeaders().entrySet()) {
-                String key = entry.getKey();
-                List<String> values = entry.getValue();
-                for (String value : values) {
-                    logger.info("key:{} value:{}", key, value);
-                }
-                if (key != null) {
-                    headers.put(key, values);
-                }
-            }
-            fileName = (String) callback.call("readAll", new Object[]{cacheEntry});
-            logger.info("fileName:{}", fileName);
-            if (fileName == null) {
+            if (!file.exists()) {
                 he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
                 try {
                     he.getRequestBody().close();
@@ -106,8 +73,13 @@ public class RequestHandler implements HttpHandler {
                 }
                 return;
             }
-            file = new File(fileName);
-            BufferedInputStream in = new BufferedInputStream(new FileInputStream(fileName));
+
+            fisHeader = new FileInputStream(headerFile);
+            ois = new ObjectInputStream(fisHeader);
+            Headers headers = he.getResponseHeaders();
+            headers.putAll((Map<String, List<String>>) ois.readObject());
+
+            BufferedInputStream in = new BufferedInputStream(new FileInputStream(file.getName()));
             he.sendResponseHeaders(HttpURLConnection.HTTP_OK, file.length());
             OutputStream out = he.getResponseBody();
             byte[] buf = new byte[65535];
@@ -121,6 +93,12 @@ public class RequestHandler implements HttpHandler {
             he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
         } finally {
             try {
+                fisHeader.close();
+                ois.close();
+            } catch (IOException e) {
+            }
+
+            try {
                 he.getRequestBody().close();
             } catch (Exception e1) {
             }
@@ -128,7 +106,6 @@ public class RequestHandler implements HttpHandler {
                 he.getResponseBody().close();
             } catch (Exception e1) {
             }
-            file.delete();
         }
     }
 }

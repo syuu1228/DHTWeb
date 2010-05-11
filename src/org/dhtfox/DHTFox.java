@@ -17,6 +17,8 @@ package org.dhtfox;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.Proxy;
 import java.net.URL;
@@ -24,7 +26,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -40,7 +41,7 @@ import ow.tool.dhtshell.DHTShell;
 public class DHTFox {
 
     static {
-        SLF4JBridgeHandler.install();
+//        SLF4JBridgeHandler.install();
     }
     private static final Logger logger = LoggerFactory.getLogger(DHTFox.class);
     public static final short APPLICATION_ID = 0x0876;
@@ -59,18 +60,20 @@ public class DHTFox {
         return dht;
     }
 
-    public boolean start(String secret, boolean upnpEnable, String bootstrapNode, int dhtPort, int httpPort, JSObject cacheCallback, JSObject loggerCallback, String logbackFilePath) {
+    public static void main(String[] args) throws JoranException {
+        DHTFox dhtfox = new DHTFox();
+        dhtfox.start("aaa", false, "125.6.175.11:3997", 3997, 8080, "extention/java/logback.xml");
+    }
+
+    public boolean start(String secret, boolean upnpEnable, String bootstrapNode, int dhtPort, int httpPort, String logbackFilePath) throws JoranException {
         this.upnpEnable = upnpEnable;
-        try {
-            LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-            JoranConfigurator configurator = new JoranConfigurator();
-            configurator.setContext(lc);
-            lc.reset();
-            configurator.doConfigure(logbackFilePath);
-        } catch (Exception e) {
-            loggerCallback.call("log", new Object[]{e.getMessage()});
-            return false;
-        }
+
+        LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+        JoranConfigurator configurator = new JoranConfigurator();
+        configurator.setContext(lc);
+        lc.reset();
+        configurator.doConfigure(logbackFilePath);
+
         try {
             this.hashedSecret = new ByteArray(secret.getBytes("UTF-8")).hashWithSHA1();
             DHTConfiguration config = DHTFactory.getDefaultConfiguration();
@@ -94,9 +97,11 @@ public class DHTFox {
             DHTShell shell = new DHTShell();
             shell.init(dht, 9999);
 
+            LocalResponseCache.installResponseCache();
+
             maintenanceExecutor.scheduleAtFixedRate(new LocalDataMaintenanceTask(dht, httpPort), 60, 60, TimeUnit.SECONDS);
 
-            http = new HTTPServer(httpPort, dht, PROXY_SETTING, HTTP_REQUEST_TIMEOUT, cacheCallback, putExecutor);
+            http = new HTTPServer(httpPort, dht, PROXY_SETTING, HTTP_REQUEST_TIMEOUT, putExecutor);
             http.bind();
             if (upnpEnable) {
                 UPnPManager upnp = UPnPManager.getInstance();
