@@ -69,6 +69,7 @@ public class DHTFox {
 		return dht;
 	}
 
+	@SuppressWarnings("static-access")
 	public static void main(String[] args) throws JoranException {
 		Options options = new Options();
 		Option secret = OptionBuilder.hasArg().withArgName("secret")
@@ -88,6 +89,9 @@ public class DHTFox {
 		Option httpport = OptionBuilder.hasArg().withArgName("httpport")
 				.isRequired().create("httpport");
 		options.addOption(httpport);
+		Option shellport = OptionBuilder.hasArg().withArgName("shellport")
+				.isRequired().create("shellport");
+		options.addOption(shellport);
 		Option logbackxml = OptionBuilder.hasArg().withArgName("logbackxml")
 				.create("logbackxml");
 		options.addOption(logbackxml);
@@ -104,13 +108,14 @@ public class DHTFox {
 		dhtfox.start(cmd.getOptionValue("secret"), cmd.hasOption("upnp"), cmd
 				.getOptionValue("bootstrap"), cmd.getOptionValue("localip"),
 				Integer.parseInt(cmd.getOptionValue("dhtport")), Integer
-						.parseInt(cmd.getOptionValue("dhtport")), cmd
+						.parseInt(cmd.getOptionValue("httpport")), Integer
+						.parseInt(cmd.getOptionValue("shellPort")), cmd
 						.getOptionValue("logbackxml"));
 	}
 
 	public boolean start(String secret, boolean upnpEnable,
 			String bootstrapNode, String localip, int dhtPort, int httpPort,
-			String logbackFilePath) throws JoranException {
+			int shellPort, String logbackFilePath) throws JoranException {
 		this.upnpEnable = upnpEnable;
 
 		LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -142,7 +147,7 @@ public class DHTFox {
 			if (bootstrapNode != null)
 				dht.joinOverlay(bootstrapNode);
 			DHTShell shell = new DHTShell();
-			shell.init(dht, 9999);
+			shell.init(dht, shellPort);
 
 			LocalResponseCache.installResponseCache();
 
