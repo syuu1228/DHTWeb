@@ -109,7 +109,7 @@ public class DHTFox {
 				.getOptionValue("bootstrap"), cmd.getOptionValue("localip"),
 				Integer.parseInt(cmd.getOptionValue("dhtport")), Integer
 						.parseInt(cmd.getOptionValue("httpport")), Integer
-						.parseInt(cmd.getOptionValue("shellPort")), cmd
+						.parseInt(cmd.getOptionValue("shellport")), cmd
 						.getOptionValue("logbackxml"));
 	}
 

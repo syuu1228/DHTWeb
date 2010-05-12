@@ -30,6 +30,7 @@ import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -44,301 +45,329 @@ import ow.messaging.MessagingAddress;
 import ow.routing.RoutingException;
 
 /**
- *
+ * 
  * @author syuu
  */
 public class ProxyHandler implements HttpHandler {
 
-    final static Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
-    private final DHT<String> dht;
-    private final int port, httpTimeout;
-    private final Proxy proxy;
-    private final ExecutorService putExecutor;
+	final static Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
+	private final DHT<String> dht;
+	private final int port, httpTimeout;
+	private final Proxy proxy;
+	private final ExecutorService putExecutor;
 
-    ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout, ExecutorService putExecutor) {
-        this.dht = dht;
-        this.proxy = proxy;
-        this.port = port;
-        this.httpTimeout = httpTimeout;
-        this.putExecutor = putExecutor;
-    }
+	ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout,
+			ExecutorService putExecutor) {
+		this.dht = dht;
+		this.proxy = proxy;
+		this.port = port;
+		this.httpTimeout = httpTimeout;
+		this.putExecutor = putExecutor;
+	}
 
+	private boolean proxyToLocalCache(HttpExchange he, URI uri) {
+		File file = LocalResponseCache.getLocalFile(uri);
+		File headerFile = LocalResponseCache.getLocalHeader(uri);
+		FileInputStream fisHeader = null;
+		ObjectInputStream ois = null;
+		try {
+			if (!file.exists() || !headerFile.exists()) {
+				return false;
+			}
 
-    private boolean proxyToLocalCache(HttpExchange he, URI uri) throws IOException {
-        File file = LocalResponseCache.getLocalFile(uri);
-        File headerFile = LocalResponseCache.getLocalHeader(uri);
-        FileInputStream fisHeader = null;
-        ObjectInputStream ois = null;
-        try {
-            if (!file.exists() || !headerFile.exists()) {
-                return false;
-            }
+			fisHeader = new FileInputStream(headerFile);
+			ois = new ObjectInputStream(fisHeader);
+			Headers headers = he.getResponseHeaders();
+			Map<String, List<String>> headerMap = (Map<String, List<String>>) ois
+					.readObject();
+			Map<String, List<String>> tmp = new HashMap<String, List<String>>();
+			for (String key : headerMap.keySet())
+				if (key != null)
+					tmp.put(key, headerMap.get(key));
+			headers.putAll(tmp);
 
-            fisHeader = new FileInputStream(headerFile);
-            ois = new ObjectInputStream(fisHeader);
-            Headers headers = he.getResponseHeaders();
-            headers.putAll((Map<String, List<String>>) ois.readObject());
+			BufferedInputStream in = new BufferedInputStream(
+					new FileInputStream(file));
+			he.sendResponseHeaders(HttpURLConnection.HTTP_OK, Integer
+					.parseInt(headerMap.get("Content-Length").get(0)));
+			OutputStream out = he.getResponseBody();
+			byte[] buf = new byte[65535];
+			int size = -1;
+			while ((size = in.read(buf)) != -1) {
+				out.write(buf, 0, size);
+			}
+			out.flush();
+		} catch (Exception e) {
+			logger.warn(e.getMessage(), e);
+			try {
+				he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
+			} catch (IOException ex) {
+			}
+		} finally {
+			try {
+				fisHeader.close();
+				ois.close();
+			} catch (IOException e) {
+			}
 
-            BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
-            he.sendResponseHeaders(HttpURLConnection.HTTP_OK, file.length());
-            OutputStream out = he.getResponseBody();
-            byte[] buf = new byte[65535];
-            int size = -1;
-            while ((size = in.read(buf)) != -1) {
-                out.write(buf, 0, size);
-            }
-            out.flush();
-        } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
-            he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
-        } finally {
-            try {
-                fisHeader.close();
-                ois.close();
-            } catch (IOException e) {
-            }
+			try {
+				he.getRequestBody().close();
+			} catch (Exception e1) {
+			}
+			try {
+				he.getResponseBody().close();
+			} catch (Exception e1) {
+			}
+		}
+		return true;
+	}
 
-            try {
-                he.getRequestBody().close();
-            } catch (Exception e1) {
-            }
-            try {
-                he.getResponseBody().close();
-            } catch (Exception e1) {
-            }
-        }
-        return true;
-    }
+	private boolean proxyToDHT(HttpExchange he, ID key, URI uri)
+			throws RoutingException {
+		logger.info("request key to DHT:{}", key);
+		Set<ValueInfo<String>> remoteAddrs = dht.get(key);
+		logger.info("got {} entries", remoteAddrs.size());
+		for (ValueInfo<String> v : remoteAddrs) {
+			HttpURLConnection connection = null;
+			try {
+				URL remoteUrl = new URL("http://" + v.getValue() + "/request/"
+						+ uri.toString());
+				MessagingAddress selfAddress = dht.getSelfAddress();
 
-    private boolean proxyToDHT(HttpExchange he, ID key, URI uri) throws RoutingException {
-        logger.info("request key to DHT:{}", key);
-        Set<ValueInfo<String>> remoteAddrs = dht.get(key);
-        logger.info("got {} entries", remoteAddrs.size());
-        for (ValueInfo<String> v : remoteAddrs) {
-            HttpURLConnection connection = null;
-            try {
-                URL remoteUrl = new URL("http://" + v.getValue() + "/request/" + uri.toString());
-                MessagingAddress selfAddress = dht.getSelfAddress();
+				if (v.getValue().equals(
+						selfAddress.getHostAddress() + ":" + port)) {
+					logger.info("Got self url, skipping: {}", remoteUrl);
+					continue;
+				}
+				logger.info("Got url from DHT: {}", remoteUrl);
 
-                if (v.getValue().equals(selfAddress.getHostAddress() + ":" + port)) {
-                    logger.info("Got self url, skipping: {}", remoteUrl);
-                    continue;
-                }
-                logger.info("Got url from DHT: {}", remoteUrl);
+				connection = (HttpURLConnection) remoteUrl
+						.openConnection(proxy);
+				connection.setConnectTimeout(httpTimeout);
+				connection.setRequestMethod(he.getRequestMethod());
+				setRequestProperties(connection, he.getRequestHeaders());
+				connection.setRequestProperty("Host", remoteUrl.getHost());
+				connection.connect();
+				int response = connection.getResponseCode();
+				logger.info("HTTP response: {}", response);
+				if (response == HttpURLConnection.HTTP_OK) {
+					InputStream in = null;
+					OutputStream out = null;
+					try {
+						setResponseHeaders(he.getResponseHeaders(), connection
+								.getHeaderFields());
+						he.sendResponseHeaders(HttpURLConnection.HTTP_OK,
+								connection.getContentLength());
+						in = connection.getInputStream();
+						out = he.getResponseBody();
+						HttpUtil.sendBody(out, in, connection
+								.getContentLength());
+					} catch (IOException e) {
+						logger.warn(e.getMessage(), e);
+					} finally {
+						try {
+							out.close();
+						} catch (Exception e) {
+						}
+						try {
+							in.close();
+						} catch (Exception e) {
+						}
+						try {
+							connection.disconnect();
+						} catch (Exception e) {
+						}
+						logger.info("Request handled by DHT");
+						return true;
+					}
+				}
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			} finally {
+				try {
+					connection.disconnect();
+				} catch (Exception e) {
+				}
+			}
+		}
+		logger.info("Request not handled by DHT");
+		return false;
+	}
 
-                connection = (HttpURLConnection) remoteUrl.openConnection(proxy);
-                connection.setConnectTimeout(httpTimeout);
-                connection.setRequestMethod(he.getRequestMethod());
-                setRequestProperties(connection, he.getRequestHeaders());
-                connection.setRequestProperty("Host", remoteUrl.getHost());
-                connection.connect();
-                int response = connection.getResponseCode();
-                logger.info("HTTP response: {}", response);
-                if (response == HttpURLConnection.HTTP_OK) {
-                    InputStream in = null;
-                    OutputStream out = null;
-                    try {
-                        setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
-                        he.sendResponseHeaders(HttpURLConnection.HTTP_OK, connection.getContentLength());
-                        in = connection.getInputStream();
-                        out = he.getResponseBody();
-                        HttpUtil.sendBody(out, in, connection.getContentLength());
-                    } catch (IOException e) {
-                        logger.warn(e.getMessage(), e);
-                    } finally {
-                        try {
-                            out.close();
-                        } catch (Exception e) {
-                        }
-                        try {
-                            in.close();
-                        } catch (Exception e) {
-                        }
-                        try {
-                            connection.disconnect();
-                        } catch (Exception e) {
-                        }
-                        logger.info("Request handled by DHT");
-                        return true;
-                    }
-                }
-            } catch (IOException e) {
-                logger.warn(e.getMessage(), e);
-            } finally {
-                try {
-                    connection.disconnect();
-                } catch (Exception e) {
-                }
-            }
-        }
-        logger.info("Request not handled by DHT");
-        return false;
-    }
+	private boolean proxyToOriginalServer(HttpExchange he, URI uri) {
+		logger.info("Request proxying:{}", uri);
+		HttpURLConnection connection = null;
+		InputStream in = null;
+		OutputStream out = null;
+		boolean result = false;
+		try {
+			connection = (HttpURLConnection) uri.toURL().openConnection(proxy);
+			connection.setConnectTimeout(httpTimeout);
+			connection.setRequestMethod(he.getRequestMethod());
+			setRequestProperties(connection, he.getRequestHeaders());
+			connection.setRequestProperty("Host", uri.getHost());
+			connection.connect();
+			int responseCode = connection.getResponseCode();
+			logger.info("responseCode:{}", responseCode);
+			setResponseHeaders(he.getResponseHeaders(), connection
+					.getHeaderFields());
+			if (responseCode == HttpURLConnection.HTTP_OK) {
+				int length = connection.getContentLength();
+				he.sendResponseHeaders(HttpURLConnection.HTTP_OK, length);
+				in = connection.getInputStream();
+				out = he.getResponseBody();
+				HttpUtil.sendBody(out, in, length);
+				result = true;
+			} else {
+				he.sendResponseHeaders(responseCode, 0);
+			}
+		} catch (Exception e) {
+			logger.warn(e.getMessage(), e);
+		} finally {
+			try {
+				he.getRequestBody().close();
+			} catch (Exception e) {
+			}
+			try {
+				he.getResponseBody().close();
+			} catch (Exception e) {
+			}
+			try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (Exception e) {
+			}
+			try {
+				connection.disconnect();
+			} catch (Exception e) {
+			}
+		}
+		logger.info("Request done");
+		return result;
+	}
 
-    private boolean proxyToOriginalServer(HttpExchange he, URI uri) {
-        logger.info("Request proxying:{}", uri);
-        HttpURLConnection connection = null;
-        InputStream in = null;
-        OutputStream out = null;
-        boolean result = false;
-        try {
-            connection = (HttpURLConnection) uri.toURL().openConnection(proxy);
-            connection.setConnectTimeout(httpTimeout);
-            connection.setRequestMethod(he.getRequestMethod());
-            setRequestProperties(connection, he.getRequestHeaders());
-            connection.setRequestProperty("Host", uri.getHost());
-            connection.connect();
-            int responseCode = connection.getResponseCode();
-            logger.info("responseCode:{}", responseCode);
-            setResponseHeaders(he.getResponseHeaders(), connection.getHeaderFields());
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                int length = connection.getContentLength();
-                he.sendResponseHeaders(HttpURLConnection.HTTP_OK, length);
-                in = connection.getInputStream();
-                out = he.getResponseBody();
-                HttpUtil.sendBody(out, in, length);
-                result = true;
-            } else {
-                he.sendResponseHeaders(responseCode, 0);
-            }
-        } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
-        } finally {
-            try {
-                he.getRequestBody().close();
-            } catch (Exception e) {
-            }
-            try {
-                he.getResponseBody().close();
-            } catch (Exception e) {
-            }
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (Exception e) {
-            }
-            try {
-                connection.disconnect();
-            } catch (Exception e) {
-            }
-        }
-        logger.info("Request done");
-        return result;
-    }
+	@Override
+	public void handle(HttpExchange he) throws IOException {
+		URI uri = null;
+		ID key = null;
+		if (!he.getRemoteAddress().getAddress().isLoopbackAddress()) {
+			logger.info("/proxy/ accessed from external address:"
+					+ he.getRemoteAddress());
+			he.sendResponseHeaders(HttpURLConnection.HTTP_FORBIDDEN, 0);
+			try {
+				he.getRequestBody().close();
+			} catch (Exception e) {
+			}
+			try {
+				he.getResponseBody().close();
+			} catch (Exception e) {
+			}
+			return;
+		}
+		boolean dhttest = false, passthroughtest = false;
+		try {
+			if (he.getRequestURI().getPath().startsWith("/dhttest/")) {
+				uri = new URI(he.getRequestURI().getPath().replaceFirst(
+						"^/dhttest/", ""));
+				dhttest = true;
+			} else if (he.getRequestURI().getPath().startsWith(
+					"/passthroughtest/")) {
+				uri = new URI(he.getRequestURI().getPath().replaceFirst(
+						"^/passthroughtest/", ""));
+				passthroughtest = true;
+			} else {
+				uri = new URI(he.getRequestURI().getPath().replaceFirst(
+						"^/proxy/", ""));
+			}
+			logger.info("uri:{}", uri);
+			key = ID.getSHA1BasedID(uri.toString().getBytes());
+		} catch (URISyntaxException ex) {
+			logger.warn(ex.getMessage(), ex);
+			he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
+			try {
+				he.getRequestBody().close();
+			} catch (Exception e1) {
+			}
+			try {
+				he.getResponseBody().close();
+			} catch (Exception e1) {
+			}
+			return;
+		}
 
-    @Override
-    public void handle(HttpExchange he) throws IOException {
-        URI uri = null;
-        ID key = null;
-        if (!he.getRemoteAddress().getAddress().isLoopbackAddress()) {
-            logger.info("/proxy/ accessed from external address:" + he.getRemoteAddress());
-            he.sendResponseHeaders(HttpURLConnection.HTTP_FORBIDDEN, 0);
-            try {
-                he.getRequestBody().close();
-            } catch (Exception e) {
-            }
-            try {
-                he.getResponseBody().close();
-            } catch (Exception e) {
-            }
-            return;
-        }
-        boolean dhttest = false, passthroughtest = false;
-        try {
-            if (he.getRequestURI().getPath().startsWith("/dhttest/")) {
-                uri = new URI(he.getRequestURI().getPath().replaceFirst("^/dhttest/", ""));
-                dhttest = true;
-            } else if (he.getRequestURI().getPath().startsWith("/passthroughtest/")) {
-                uri = new URI(he.getRequestURI().getPath().replaceFirst("^/passthroughtest/", ""));
-                passthroughtest = true;
-            } else {
-                uri = new URI(he.getRequestURI().getPath().replaceFirst("^/proxy/", ""));
-            }
-            logger.info("uri:{}", uri);
-            key = ID.getSHA1BasedID(uri.toString().getBytes());
-        } catch (URISyntaxException ex) {
-            logger.warn(ex.getMessage(), ex);
-            he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
-            try {
-                he.getRequestBody().close();
-            } catch (Exception e1) {
-            }
-            try {
-                he.getResponseBody().close();
-            } catch (Exception e1) {
-            }
-            return;
-        }
+		if (!passthroughtest) {
+			/*
+			if (!dhttest) {
+				boolean result = proxyToLocalCache(he, uri);
+				if (result) {
+					return;
+				}
+			}
+			*/
+			try {
+				boolean result = proxyToDHT(he, key, uri);
+				if (result) {
+					putCache(key);
+					return;
+				}
+				if (dhttest) {
+					he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
+					try {
+						he.getRequestBody().close();
+					} catch (Exception e1) {
+					}
+					try {
+						he.getResponseBody().close();
+					} catch (Exception e1) {
+					}
+					return;
+				}
+			} catch (RoutingException e) {
+				logger.info(e.getMessage());
+			}
+		}
+		boolean result = proxyToOriginalServer(he, uri);
+		if (result) {
+			putCache(key);
+		}
+	}
 
-        if (!passthroughtest) {
-            if (!dhttest) {
-                boolean result = proxyToLocalCache(he, uri);
-                if (result) {
-                    return;
-                }
-            }
-            try {
-                boolean result = proxyToDHT(he, key, uri);
-                if (result) {
-                    putCache(key);
-                    return;
-                }
-                if (dhttest) {
-                    he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
-                    try {
-                        he.getRequestBody().close();
-                    } catch (Exception e1) {
-                    }
-                    try {
-                        he.getResponseBody().close();
-                    } catch (Exception e1) {
-                    }
-                    return;
-                }
-            } catch (RoutingException e) {
-                logger.info(e.getMessage());
-            }
-        }
-        boolean result = proxyToOriginalServer(he, uri);
-        if (result) {
-            putCache(key);
-        }
-    }
+	private void setResponseHeaders(Headers responseHeaders,
+			Map<String, List<String>> headerFields) {
+		for (Entry<String, List<String>> entry : headerFields.entrySet()) {
+			String key = entry.getKey();
+			List<String> values = entry.getValue();
+			if (key != null) {
+				if (key.toLowerCase().equals("host")) {
+					continue;
+				}
+				for (String val : values) {
+					logger.info("response key:{} value:{}", key, values);
+				}
+				responseHeaders.put(key, values);
+			}
+		}
+	}
 
-    private void setResponseHeaders(Headers responseHeaders, Map<String, List<String>> headerFields) {
-        for (Entry<String, List<String>> entry : headerFields.entrySet()) {
-            String key = entry.getKey();
-            List<String> values = entry.getValue();
-            if (key != null) {
-                if (key.toLowerCase().equals("host")) {
-                    continue;
-                }
-                for (String val : values) {
-                    logger.info("response key:{} value:{}", key, values);
-                }
-                responseHeaders.put(key, values);
-            }
-        }
-    }
+	private void setRequestProperties(HttpURLConnection connection,
+			Headers requestHeaders) {
+		for (Entry<String, List<String>> entry : requestHeaders.entrySet()) {
+			String key = entry.getKey();
+			List<String> values = entry.getValue();
+			if (key != null) {
+				if (key.toLowerCase().equals("host")) {
+					continue;
+				}
+				for (String val : values) {
+					logger.info("request key:{} value:{}", key, values);
+					connection.setRequestProperty(key, val);
+				}
+			}
+		}
+	}
 
-    private void setRequestProperties(HttpURLConnection connection, Headers requestHeaders) {
-        for (Entry<String, List<String>> entry : requestHeaders.entrySet()) {
-            String key = entry.getKey();
-            List<String> values = entry.getValue();
-            if (key != null) {
-                if (key.toLowerCase().equals("host")) {
-                    continue;
-                }
-                for (String val : values) {
-                    logger.info("request key:{} value:{}", key, values);
-                    connection.setRequestProperty(key, val);
-                }
-            }
-        }
-    }
-
-    private void putCache(ID key) {
-        putExecutor.submit(new PutTask(dht, port, key));
-    }
+	private void putCache(ID key) {
+		putExecutor.submit(new PutTask(dht, port, key));
+	}
 }

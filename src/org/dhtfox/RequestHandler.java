@@ -16,6 +16,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -77,10 +78,16 @@ public class RequestHandler implements HttpHandler {
             fisHeader = new FileInputStream(headerFile);
             ois = new ObjectInputStream(fisHeader);
             Headers headers = he.getResponseHeaders();
-            headers.putAll((Map<String, List<String>>) ois.readObject());
+			Map<String, List<String>> headerMap = (Map<String, List<String>>) ois.readObject();
+			Map<String, List<String>> tmp = new HashMap<String, List<String>>();
+			for (String key : headerMap.keySet())
+				if (key != null)
+					tmp.put(key, headerMap.get(key));
+			headers.putAll(tmp);
 
-            BufferedInputStream in = new BufferedInputStream(new FileInputStream(file.getName()));
-            he.sendResponseHeaders(HttpURLConnection.HTTP_OK, file.length());
+            BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
+            he.sendResponseHeaders(HttpURLConnection.HTTP_OK, Integer
+					.parseInt(headerMap.get("Content-Length").get(0)));
             OutputStream out = he.getResponseBody();
             byte[] buf = new byte[65535];
             int size = -1;

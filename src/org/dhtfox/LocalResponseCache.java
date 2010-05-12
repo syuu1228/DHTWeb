@@ -8,14 +8,15 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.CacheRequest;
 import java.net.CacheResponse;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.ResponseCache;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -63,9 +64,13 @@ public class LocalResponseCache extends ResponseCache {
                 logger.warn(ex.getMessage(), ex);
             }
         }
-        logger.info("getLocalFile:{}", remoteUri);
-        int code = remoteUri.hashCode();
-        String fileName = Integer.toString(code >= 0 ? code : -code);
+        String fileName = null;
+		try {
+			fileName = URLEncoder.encode(remoteUri.toString(), "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			logger.warn(e.getMessage(), e);
+		}
+        logger.info("getLocalFile uri:{} fileName:{}", remoteUri, fileName);
         return new File(CHACHE_DIR, fileName);
     }
 
@@ -77,10 +82,14 @@ public class LocalResponseCache extends ResponseCache {
                 logger.warn(ex.getMessage(), ex);
             }
         }
-        logger.info("getLocalHeader:{}", remoteUri);
-        int code = remoteUri.hashCode();
-        String fileName = Integer.toString(code >= 0 ? code : -code);
-        return new File(CHACHE_DIR, fileName + ".header");
+        String fileName = null;
+		try {
+			fileName = URLEncoder.encode(remoteUri.toString(), "UTF-8") + ".header";
+		} catch (UnsupportedEncodingException e) {
+			logger.warn(e.getMessage(), e);
+		}
+        logger.info("getLocalHeader: uri{} fileName:{}", remoteUri, fileName);
+        return new File(CHACHE_DIR, fileName);
     }
 
     /**
