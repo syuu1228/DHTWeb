@@ -38,8 +38,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-//import org.dhtfox.log.ProxyLogBean;
-//import org.dhtfox.log.ProxyLogWriter;
+import org.dhtfox.log.AccessLogBean;
+import org.dhtfox.log.AccessLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
@@ -59,7 +59,7 @@ public class ProxyHandler implements HttpHandler {
 	private final int port, httpTimeout;
 	private final Proxy proxy;
 	private final ExecutorService putExecutor;
-//	private ProxyLogWriter proxyLogger;
+	private AccessLogWriter proxyLogger;
 
 	ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout,
 			ExecutorService putExecutor) {
@@ -68,21 +68,18 @@ public class ProxyHandler implements HttpHandler {
 		this.port = port;
 		this.httpTimeout = httpTimeout;
 		this.putExecutor = putExecutor;
-/*
 		try {
-			this.proxyLogger = new ProxyLogWriter("proxy.log");
+			this.proxyLogger = new AccessLogWriter("proxy.log");
 			this.proxyLogger.open();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(e.getMessage(), e);
 		}
-*/
 	}
-/*
+
 	protected void finalize() throws Throwable {
 		this.proxyLogger.close();
 	}
-*/
+
 	@SuppressWarnings("unchecked")
 	private boolean proxyToLocalCache(HttpExchange he, URI uri) {
 		File file = LocalResponseCache.getLocalFile(uri);
@@ -322,34 +319,19 @@ public class ProxyHandler implements HttpHandler {
 
 		if (!passthroughtest) {
 			if (!dhttest) {
-				System.out.printf("start LocalCache %s %s\n", new Date(), uri);
+				proxyLogger.write(new AccessLogBean(new Date().toString(), "start LocalCache", uri.toString(), 0, true));
 				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToLocalCache(he, uri);
-				System.out.printf("end LocalCache %s %s %b %d\n", new Date(), uri, result, System.currentTimeMillis() - currentTime);
-				if (result) {
-/*
-					try {
-						proxyLogger.write(new ProxyLogBean(uri, "cache"));
-					} catch (Exception e) {
-						logger.warn(e.getMessage(), e);
-					}
-*/
+				proxyLogger.write(new AccessLogBean(new Date().toString(), "end LocalCache", uri.toString(), System.currentTimeMillis() - currentTime, result));
+				if (result)
 					return;
-				}
 			}
 			try {
-				System.out.printf("start DHT %s %s\n", new Date(), uri);
+				proxyLogger.write(new AccessLogBean(new Date().toString(), "start DHT", uri.toString(), 0, true));
 				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToDHT(he, key, uri);
-				System.out.printf("end DHT %s %s %b %d\n", new Date(), uri, result, System.currentTimeMillis() - currentTime);
+				proxyLogger.write(new AccessLogBean(new Date().toString(), "end DHT", uri.toString(), System.currentTimeMillis() - currentTime, result));
 				if (result) {
-/*
-					try {
-						proxyLogger.write(new ProxyLogBean(uri, "dht"));
-					} catch (Exception e) {
-						logger.warn(e.getMessage(), e);
-					}
-*/
 					putCache(key);
 					return;
 				}
@@ -369,20 +351,12 @@ public class ProxyHandler implements HttpHandler {
 				logger.info(e.getMessage());
 			}
 		}
-		System.out.printf("start OriginalServer %s %s\n", new Date(), uri);		
+		proxyLogger.write(new AccessLogBean(new Date().toString(), "start OriginalServer", uri.toString(), 0, true));
 		long currentTime = System.currentTimeMillis();
 		boolean result = proxyToOriginalServer(he, uri);
-		System.out.printf("end OriginalServer %s %s %b %d\n", new Date(), uri, result, System.currentTimeMillis() - currentTime);
-		if (result) {
-/*
-			try {
-				proxyLogger.write(new ProxyLogBean(uri, "http"));
-			} catch (Exception e) {
-				logger.warn(e.getMessage(), e);
-			}
-*/
+		proxyLogger.write(new AccessLogBean(new Date().toString(), "end OriginalServer", uri.toString(), System.currentTimeMillis() - currentTime, result));
+		if (result)
 			putCache(key);
-		}
 	}
 
 	private void setResponseHeaders(Headers responseHeaders,

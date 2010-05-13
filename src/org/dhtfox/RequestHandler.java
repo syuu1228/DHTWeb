@@ -21,8 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-//import org.dhtfox.log.RequestLogBean;
-//import org.dhtfox.log.RequestLogWriter;
+import org.dhtfox.log.AccessLogBean;
+import org.dhtfox.log.AccessLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,22 +33,19 @@ import org.slf4j.LoggerFactory;
 public class RequestHandler implements HttpHandler {
 
 	final static Logger logger = LoggerFactory.getLogger(RequestHandler.class);
-//	private RequestLogWriter requestLogger;
+	private AccessLogWriter requestLogger;
 
 	RequestHandler() {
-		/*
 		try {
-			this.requestLogger = new RequestLogWriter("request.log");
+			this.requestLogger = new AccessLogWriter("request.log");
 			this.requestLogger.open();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(e.getMessage(), e);
 		}
-		*/
 	}
 	
 	protected void finalize() throws Throwable {
-//		this.requestLogger.close();
+		this.requestLogger.close();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -74,7 +71,7 @@ public class RequestHandler implements HttpHandler {
 			return;
 		}
 		logger.info("url:{}", uri);
-		System.out.printf("start request %s %s\n", new Date(), uri);
+		requestLogger.write(new AccessLogBean(new Date().toString(), "start request", uri.toString(), 0, true));
 		long currentTime = System.currentTimeMillis();
 		
 		File file = LocalResponseCache.getLocalFile(uri);
@@ -92,7 +89,7 @@ public class RequestHandler implements HttpHandler {
 					he.getResponseBody().close();
 				} catch (Exception e1) {
 				}
-				System.out.printf("end request %s %s false %d\n", new Date(), uri, System.currentTimeMillis() - currentTime);
+				requestLogger.write(new AccessLogBean(new Date().toString(), "end request", uri.toString(), System.currentTimeMillis() - currentTime, false));
 				return;
 			}
 
@@ -136,15 +133,7 @@ public class RequestHandler implements HttpHandler {
 				he.getResponseBody().close();
 			} catch (Exception e1) {
 			}
-			/*
-			try {
-				requestLogger.write(new RequestLogBean(uri));
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			*/
-			System.out.printf("end request %s %s true %d\n", new Date(), uri, System.currentTimeMillis() - currentTime);
+			requestLogger.write(new AccessLogBean(new Date().toString(), "end request", uri.toString(), System.currentTimeMillis() - currentTime, true));
 		}
 	}
 }
