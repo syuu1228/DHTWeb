@@ -30,6 +30,7 @@ import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +38,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import org.dhtfox.log.ProxyLogBean;
-import org.dhtfox.log.ProxyLogWriter;
+//import org.dhtfox.log.ProxyLogBean;
+//import org.dhtfox.log.ProxyLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
@@ -58,7 +59,7 @@ public class ProxyHandler implements HttpHandler {
 	private final int port, httpTimeout;
 	private final Proxy proxy;
 	private final ExecutorService putExecutor;
-	private ProxyLogWriter proxyLogger;
+//	private ProxyLogWriter proxyLogger;
 
 	ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout,
 			ExecutorService putExecutor) {
@@ -67,6 +68,7 @@ public class ProxyHandler implements HttpHandler {
 		this.port = port;
 		this.httpTimeout = httpTimeout;
 		this.putExecutor = putExecutor;
+/*
 		try {
 			this.proxyLogger = new ProxyLogWriter("proxy.log");
 			this.proxyLogger.open();
@@ -74,12 +76,13 @@ public class ProxyHandler implements HttpHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+*/
 	}
-
+/*
 	protected void finalize() throws Throwable {
 		this.proxyLogger.close();
 	}
-
+*/
 	@SuppressWarnings("unchecked")
 	private boolean proxyToLocalCache(HttpExchange he, URI uri) {
 		File file = LocalResponseCache.getLocalFile(uri);
@@ -319,24 +322,34 @@ public class ProxyHandler implements HttpHandler {
 
 		if (!passthroughtest) {
 			if (!dhttest) {
+				System.out.printf("start LocalCache %s %s\n", new Date(), uri);
+				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToLocalCache(he, uri);
+				System.out.printf("end LocalCache %s %s %b %d\n", new Date(), uri, result, System.currentTimeMillis() - currentTime);
 				if (result) {
+/*
 					try {
 						proxyLogger.write(new ProxyLogBean(uri, "cache"));
 					} catch (Exception e) {
 						logger.warn(e.getMessage(), e);
 					}
+*/
 					return;
 				}
 			}
 			try {
+				System.out.printf("start DHT %s %s\n", new Date(), uri);
+				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToDHT(he, key, uri);
+				System.out.printf("end DHT %s %s %b %d\n", new Date(), uri, result, System.currentTimeMillis() - currentTime);
 				if (result) {
+/*
 					try {
 						proxyLogger.write(new ProxyLogBean(uri, "dht"));
 					} catch (Exception e) {
 						logger.warn(e.getMessage(), e);
 					}
+*/
 					putCache(key);
 					return;
 				}
@@ -356,13 +369,18 @@ public class ProxyHandler implements HttpHandler {
 				logger.info(e.getMessage());
 			}
 		}
+		System.out.printf("start OriginalServer %s %s\n", new Date(), uri);		
+		long currentTime = System.currentTimeMillis();
 		boolean result = proxyToOriginalServer(he, uri);
+		System.out.printf("end OriginalServer %s %s %b %d\n", new Date(), uri, result, System.currentTimeMillis() - currentTime);
 		if (result) {
+/*
 			try {
 				proxyLogger.write(new ProxyLogBean(uri, "http"));
 			} catch (Exception e) {
 				logger.warn(e.getMessage(), e);
 			}
+*/
 			putCache(key);
 		}
 	}

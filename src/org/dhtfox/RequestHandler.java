@@ -16,12 +16,13 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.dhtfox.log.RequestLogBean;
-import org.dhtfox.log.RequestLogWriter;
+//import org.dhtfox.log.RequestLogBean;
+//import org.dhtfox.log.RequestLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +33,10 @@ import org.slf4j.LoggerFactory;
 public class RequestHandler implements HttpHandler {
 
 	final static Logger logger = LoggerFactory.getLogger(RequestHandler.class);
-	private RequestLogWriter requestLogger;
+//	private RequestLogWriter requestLogger;
 
 	RequestHandler() {
+		/*
 		try {
 			this.requestLogger = new RequestLogWriter("request.log");
 			this.requestLogger.open();
@@ -42,10 +44,11 @@ public class RequestHandler implements HttpHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		*/
 	}
 	
 	protected void finalize() throws Throwable {
-		this.requestLogger.close();
+//		this.requestLogger.close();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -71,6 +74,9 @@ public class RequestHandler implements HttpHandler {
 			return;
 		}
 		logger.info("url:{}", uri);
+		System.out.printf("start request %s %s\n", new Date(), uri);
+		long currentTime = System.currentTimeMillis();
+		
 		File file = LocalResponseCache.getLocalFile(uri);
 		File headerFile = LocalResponseCache.getLocalHeader(uri);
 		FileInputStream fisHeader = null;
@@ -86,6 +92,7 @@ public class RequestHandler implements HttpHandler {
 					he.getResponseBody().close();
 				} catch (Exception e1) {
 				}
+				System.out.printf("end request %s %s false %d\n", new Date(), uri, System.currentTimeMillis() - currentTime);
 				return;
 			}
 
@@ -129,12 +136,15 @@ public class RequestHandler implements HttpHandler {
 				he.getResponseBody().close();
 			} catch (Exception e1) {
 			}
+			/*
 			try {
 				requestLogger.write(new RequestLogBean(uri));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			*/
+			System.out.printf("end request %s %s true %d\n", new Date(), uri, System.currentTimeMillis() - currentTime);
 		}
 	}
 }

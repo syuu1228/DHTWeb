@@ -36,6 +36,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
 import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
@@ -48,7 +50,7 @@ import ow.tool.dhtshell.DHTShell;
 public class DHTFox {
 
 	static {
-		// SLF4JBridgeHandler.install();
+		SLF4JBridgeHandler.install();
 	}
 	private static final Logger logger = LoggerFactory.getLogger(DHTFox.class);
 	public static final short APPLICATION_ID = 0x0876;
