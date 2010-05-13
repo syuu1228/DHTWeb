@@ -57,9 +57,9 @@ public class LocalResponseCache extends ResponseCache {
      * Returns the local File corresponding to the given remote URI.
      */
     public static File getLocalFile(URI remoteUri) {
-        if (remoteUri.getPath().matches("^/requests/")) {
+        if (remoteUri.getPath().matches("^/request/")) {
             try {
-                remoteUri = new URI(remoteUri.getPath().replaceFirst("^/requests/", ""));
+                remoteUri = new URI(remoteUri.getPath().replaceFirst("^/request/", ""));
             } catch (URISyntaxException ex) {
                 logger.warn(ex.getMessage(), ex);
             }

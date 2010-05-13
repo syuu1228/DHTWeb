@@ -65,16 +65,18 @@ public class ProxyHandler implements HttpHandler {
 		this.putExecutor = putExecutor;
 	}
 
+	@SuppressWarnings("unchecked")
 	private boolean proxyToLocalCache(HttpExchange he, URI uri) {
 		File file = LocalResponseCache.getLocalFile(uri);
 		File headerFile = LocalResponseCache.getLocalHeader(uri);
 		FileInputStream fisHeader = null;
 		ObjectInputStream ois = null;
-		try {
-			if (!file.exists() || !headerFile.exists()) {
-				return false;
-			}
 
+		if (!file.exists() || !headerFile.exists()) {
+			return false;
+		}
+
+		try {
 			fisHeader = new FileInputStream(headerFile);
 			ois = new ObjectInputStream(fisHeader);
 			Headers headers = he.getResponseHeaders();
@@ -177,9 +179,9 @@ public class ProxyHandler implements HttpHandler {
 							connection.disconnect();
 						} catch (Exception e) {
 						}
-						logger.info("Request handled by DHT");
-						return true;
 					}
+					logger.info("Request handled by DHT");
+					return true;
 				}
 			} catch (IOException e) {
 				logger.warn(e.getMessage(), e);
@@ -297,14 +299,12 @@ public class ProxyHandler implements HttpHandler {
 		}
 
 		if (!passthroughtest) {
-			/*
 			if (!dhttest) {
 				boolean result = proxyToLocalCache(he, uri);
 				if (result) {
 					return;
 				}
 			}
-			*/
 			try {
 				boolean result = proxyToDHT(he, key, uri);
 				if (result) {

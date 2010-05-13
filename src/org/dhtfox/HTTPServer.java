@@ -45,7 +45,7 @@ public class HTTPServer {
 
     public void bind() {
         HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port, httpTimeout, putExecutor);
-        HttpHandler requestHandler = new RequestHandler(port);
+        HttpHandler requestHandler = new RequestHandler();
         server.createContext("/proxy/", proxyHandler);
         server.createContext("/dhttest/", proxyHandler);
         server.createContext("/passthroughtest/", proxyHandler);
