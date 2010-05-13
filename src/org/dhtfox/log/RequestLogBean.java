@@ -8,7 +8,7 @@ import org.supercsv.cellprocessor.ift.CellProcessor;
 
 public class RequestLogBean {
 	public static final CellProcessor[] PROCESSORS = new CellProcessor[] {
-			new ParseDate("dow mon dd hh:mm:ss zzz yyyy"), null, null };
+			new ParseDate("yy/mm/dd hh:mm:ss"), null, null };
 	public static final String[] HEADER = { "date", "uri", "method" };
 	Date date;
 	String uri;
