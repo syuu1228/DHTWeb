@@ -27,7 +27,11 @@ import java.awt.event.WindowEvent;
 
 public class ErrorDialog extends Dialog {
 
-    Label label = new Label();
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = -6093896842533633107L;
+	Label label = new Label();
     Button button = new Button();
     Panel panel = new Panel();
 

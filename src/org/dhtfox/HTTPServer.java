@@ -24,36 +24,38 @@ import java.util.concurrent.ExecutorService;
 import ow.dht.DHT;
 
 /**
- *
+ * 
  * @author syuu
  */
 public class HTTPServer {
-    private final int port, httpTimeout;
-    private final DHT<String> dht;
-    private final Proxy proxy;
-    private final HttpServer server;
-    private final ExecutorService putExecutor;
+	private final int port, httpTimeout;
+	private final DHT<String> dht;
+	private final Proxy proxy;
+	private final HttpServer server;
+	private final ExecutorService putExecutor;
 
-    public HTTPServer(int port, DHT<String> dht, Proxy proxy, int requestTimeout, ExecutorService putExecutor) throws IOException {
-        this.port = port;
-        this.dht = dht;
-        this.proxy = proxy;
-        this.httpTimeout = requestTimeout;
-        this.putExecutor = putExecutor;
-        this.server = HttpServer.create(new InetSocketAddress(port), 0);
-    }
+	public HTTPServer(int port, DHT<String> dht, Proxy proxy,
+			int requestTimeout, ExecutorService putExecutor) throws IOException {
+		this.port = port;
+		this.dht = dht;
+		this.proxy = proxy;
+		this.httpTimeout = requestTimeout;
+		this.putExecutor = putExecutor;
+		this.server = HttpServer.create(new InetSocketAddress(port), 0);
+	}
 
-    public void bind() {
-        HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port, httpTimeout, putExecutor);
-        HttpHandler requestHandler = new RequestHandler();
-        server.createContext("/proxy/", proxyHandler);
-        server.createContext("/dhttest/", proxyHandler);
-        server.createContext("/passthroughtest/", proxyHandler);
-        server.createContext("/request/", requestHandler);
-        server.start();
-    }
+	public void bind() {
+		HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port,
+				httpTimeout, putExecutor);
+		HttpHandler requestHandler = new RequestHandler();
+		server.createContext("/proxy/", proxyHandler);
+		server.createContext("/dhttest/", proxyHandler);
+		server.createContext("/passthroughtest/", proxyHandler);
+		server.createContext("/request/", requestHandler);
+		server.start();
+	}
 
-    public void stop() {
-        server.stop(port);
-    }
+	public void stop() {
+		server.stop(port);
+	}
 }

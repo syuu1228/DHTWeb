@@ -36,7 +36,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
@@ -128,15 +127,6 @@ public class DHTFox {
 			this.hashedSecret = new ByteArray(secret.getBytes("UTF-8"))
 					.hashWithSHA1();
 			DHTConfiguration config = DHTFactory.getDefaultConfiguration();
-			/*
-			 * config.setImplementationName("ChurnTolerantDHT");
-			 * config.setDirectoryType("PersistentMap");
-			 * config.setMessagingTransport("UDP");
-			 * config.setRoutingAlgorithm("Kademlia");
-			 * config.setRoutingStyle("Iterative"); config.setDoExpire(true);
-			 * config.setDoReputOnRequester(false);
-			 * config.setUseTimerInsteadOfThread(false);
-			 */
 			config.setDoUPnPNATTraversal(upnpEnable);
 			config.setContactPort(dhtPort);
 			if (localip != null)

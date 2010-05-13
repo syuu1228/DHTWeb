@@ -36,6 +36,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+
+import org.dhtfox.log.ProxyLogBean;
+import org.dhtfox.log.ProxyLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
@@ -55,6 +58,7 @@ public class ProxyHandler implements HttpHandler {
 	private final int port, httpTimeout;
 	private final Proxy proxy;
 	private final ExecutorService putExecutor;
+	private ProxyLogWriter proxyLogger;
 
 	ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout,
 			ExecutorService putExecutor) {
@@ -63,6 +67,17 @@ public class ProxyHandler implements HttpHandler {
 		this.port = port;
 		this.httpTimeout = httpTimeout;
 		this.putExecutor = putExecutor;
+		try {
+			this.proxyLogger = new ProxyLogWriter("proxy.log");
+			this.proxyLogger.open();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	protected void finalize() throws Throwable {
+		this.proxyLogger.close();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -306,12 +321,22 @@ public class ProxyHandler implements HttpHandler {
 			if (!dhttest) {
 				boolean result = proxyToLocalCache(he, uri);
 				if (result) {
+					try {
+						proxyLogger.write(new ProxyLogBean(uri, "cache"));
+					} catch (Exception e) {
+						logger.warn(e.getMessage(), e);
+					}
 					return;
 				}
 			}
 			try {
 				boolean result = proxyToDHT(he, key, uri);
 				if (result) {
+					try {
+						proxyLogger.write(new ProxyLogBean(uri, "dht"));
+					} catch (Exception e) {
+						logger.warn(e.getMessage(), e);
+					}
 					putCache(key);
 					return;
 				}
@@ -333,6 +358,11 @@ public class ProxyHandler implements HttpHandler {
 		}
 		boolean result = proxyToOriginalServer(he, uri);
 		if (result) {
+			try {
+				proxyLogger.write(new ProxyLogBean(uri, "http"));
+			} catch (Exception e) {
+				logger.warn(e.getMessage(), e);
+			}
 			putCache(key);
 		}
 	}
@@ -347,7 +377,7 @@ public class ProxyHandler implements HttpHandler {
 					continue;
 				}
 				for (String val : values) {
-					logger.info("response key:{} value:{}", key, values);
+					logger.info("response key:{} value:{}", key, val);
 				}
 				responseHeaders.put(key, values);
 			}

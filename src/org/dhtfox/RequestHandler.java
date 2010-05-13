@@ -19,6 +19,9 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.dhtfox.log.RequestLogBean;
+import org.dhtfox.log.RequestLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +32,22 @@ import org.slf4j.LoggerFactory;
 public class RequestHandler implements HttpHandler {
 
 	final static Logger logger = LoggerFactory.getLogger(RequestHandler.class);
+	private RequestLogWriter requestLogger;
 
+	RequestHandler() {
+		try {
+			this.requestLogger = new RequestLogWriter("request.log");
+			this.requestLogger.open();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	protected void finalize() throws Throwable {
+		this.requestLogger.close();
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	public void handle(HttpExchange he) throws IOException {
@@ -110,6 +128,12 @@ public class RequestHandler implements HttpHandler {
 			try {
 				he.getResponseBody().close();
 			} catch (Exception e1) {
+			}
+			try {
+				requestLogger.write(new RequestLogBean(uri));
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}

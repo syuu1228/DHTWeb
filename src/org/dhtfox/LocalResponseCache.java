@@ -176,7 +176,8 @@ public class LocalResponseCache extends ResponseCache {
         private FileInputStream fis;
         private Map<String, List<String>> headers = null;
 
-        private LocalCacheResponse(File localFile, File localHeader) {
+        @SuppressWarnings("unchecked")
+		private LocalCacheResponse(File localFile, File localHeader) {
             FileInputStream fisHeader = null;
             ObjectInputStream ois = null;
             try {
