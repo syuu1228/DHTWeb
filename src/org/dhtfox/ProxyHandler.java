@@ -88,10 +88,18 @@ public class ProxyHandler implements HttpHandler {
 					tmp.put(key, headerMap.get(key));
 			headers.putAll(tmp);
 
-			BufferedInputStream in = new BufferedInputStream(
-					new FileInputStream(file));
 			he.sendResponseHeaders(HttpURLConnection.HTTP_OK, Integer
 					.parseInt(headerMap.get("Content-Length").get(0)));
+		} catch (Exception e) {
+			logger.warn(e.getMessage(), e);
+			try {
+				he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
+			} catch (IOException ex) {
+			}
+		}
+		try {
+			BufferedInputStream in = new BufferedInputStream(
+					new FileInputStream(file));
 			OutputStream out = he.getResponseBody();
 			byte[] buf = new byte[65535];
 			int size = -1;
@@ -99,12 +107,8 @@ public class ProxyHandler implements HttpHandler {
 				out.write(buf, 0, size);
 			}
 			out.flush();
-		} catch (Exception e) {
+		} catch (IOException e) {
 			logger.warn(e.getMessage(), e);
-			try {
-				he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
-			} catch (IOException ex) {
-			}
 		} finally {
 			try {
 				fisHeader.close();
