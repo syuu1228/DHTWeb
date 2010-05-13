@@ -1,8 +1,5 @@
 package org.dhtfox.log;
 
-import java.net.URI;
-import java.util.Date;
-
 import org.supercsv.cellprocessor.ParseBool;
 import org.supercsv.cellprocessor.ParseLong;
 import org.supercsv.cellprocessor.ift.CellProcessor;
@@ -10,12 +7,14 @@ import org.supercsv.cellprocessor.ift.CellProcessor;
 public class AccessLogBean {
 	public static final CellProcessor[] PROCESSORS = new CellProcessor[] {
 			null, null, null, new ParseLong(), new ParseBool() };
-	public static final String[] HEADER = { "date", "uri", "method", "latency", "result" };
+	public static final String[] HEADER = { "date", "uri", "method", "latency",
+			"result" };
 	String date, uri, method;
 	long latency;
 	boolean result;
 
-	public AccessLogBean(String date, String uri, String method, long latency, boolean result) {
+	public AccessLogBean(String date, String uri, String method, long latency,
+			boolean result) {
 		this.date = date;
 		this.uri = uri;
 		this.method = method;
@@ -42,7 +41,7 @@ public class AccessLogBean {
 	public AccessLogBean() {
 	}
 
-	public boolean isResult() {
+	public boolean getResult() {
 		return result;
 	}
 
