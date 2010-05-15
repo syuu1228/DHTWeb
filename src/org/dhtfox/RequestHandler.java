@@ -16,13 +16,10 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.dhtfox.log.AccessLogBean;
-import org.dhtfox.log.AccessLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,21 +30,8 @@ import org.slf4j.LoggerFactory;
 public class RequestHandler implements HttpHandler {
 
 	final static Logger logger = LoggerFactory.getLogger(RequestHandler.class);
-	private AccessLogWriter requestLogger;
+	final static Logger requestLogger = LoggerFactory.getLogger("requestlog");
 
-	RequestHandler() {
-		try {
-			this.requestLogger = new AccessLogWriter("request.log");
-			this.requestLogger.open();
-		} catch (IOException e) {
-			logger.warn(e.getMessage(), e);
-		}
-	}
-	
-	protected void finalize() throws Throwable {
-		this.requestLogger.close();
-	}
-	
 	@SuppressWarnings("unchecked")
 	@Override
 	public void handle(HttpExchange he) throws IOException {
@@ -71,13 +55,15 @@ public class RequestHandler implements HttpHandler {
 			return;
 		}
 		logger.info("url:{}", uri);
-		requestLogger.write(new AccessLogBean(new Date().toString(), "start request", uri.toString(), 0, true));
+
+		requestLogger.info("start uri:{}", uri);
 		long currentTime = System.currentTimeMillis();
 		
 		File file = LocalResponseCache.getLocalFile(uri);
 		File headerFile = LocalResponseCache.getLocalHeader(uri);
 		FileInputStream fisHeader = null;
 		ObjectInputStream ois = null;
+		boolean headerSent = false;
 		try {
 			if (!file.exists()) {
 				he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
@@ -89,7 +75,10 @@ public class RequestHandler implements HttpHandler {
 					he.getResponseBody().close();
 				} catch (Exception e1) {
 				}
-				requestLogger.write(new AccessLogBean(new Date().toString(), "end request", uri.toString(), System.currentTimeMillis() - currentTime, false));
+
+				requestLogger.info(
+						"end result:false uri:{} time:{}", uri,
+						System.currentTimeMillis() - currentTime);
 				return;
 			}
 
@@ -108,6 +97,7 @@ public class RequestHandler implements HttpHandler {
 					new FileInputStream(file));
 			he.sendResponseHeaders(HttpURLConnection.HTTP_OK, Integer
 					.parseInt(headerMap.get("Content-Length").get(0)));
+			headerSent = true;
 			OutputStream out = he.getResponseBody();
 			byte[] buf = new byte[65535];
 			int size = -1;
@@ -117,7 +107,8 @@ public class RequestHandler implements HttpHandler {
 			out.flush();
 		} catch (Exception e) {
 			logger.warn(e.getMessage(), e);
-			he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
+			if(!headerSent)
+				he.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
 		} finally {
 			try {
 				fisHeader.close();
@@ -133,7 +124,9 @@ public class RequestHandler implements HttpHandler {
 				he.getResponseBody().close();
 			} catch (Exception e1) {
 			}
-			requestLogger.write(new AccessLogBean(new Date().toString(), "end request", uri.toString(), System.currentTimeMillis() - currentTime, true));
+			requestLogger.info(
+					"end result:false uri:{} time:{}", uri,
+					System.currentTimeMillis() - currentTime);
 		}
 	}
 }

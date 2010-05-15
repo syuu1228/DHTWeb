@@ -56,6 +56,6 @@ public class HTTPServer {
 	}
 
 	public void stop() {
-		server.stop(port);
+		server.stop(0);
 	}
 }

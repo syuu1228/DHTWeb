@@ -17,6 +17,7 @@ import ow.messaging.MessagingAddress;
  */
 public class PutTask implements Runnable {
     public static final Logger logger = LoggerFactory.getLogger(PutTask.class);
+    public static final Logger putLogger = LoggerFactory.getLogger("putlog");
     private final ID key;
     private final DHT<String> dht;
     private final int port;
@@ -31,6 +32,8 @@ public class PutTask implements Runnable {
     public void run() {
         MessagingAddress selfAddress = dht.getSelfAddress();
         logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
+        putLogger.info("start key:{}", key);
+		long currentTime = System.currentTimeMillis();
         while(true) {
             try {
                 dht.put(key, selfAddress.getHostAddress() + ":" + port);
@@ -44,5 +47,7 @@ public class PutTask implements Runnable {
                 }
             }
         }
+        putLogger.info("end key:{} time:{}", key, 
+						System.currentTimeMillis() - currentTime);
     }
 }

@@ -8,6 +8,5 @@
 	<classpathentry kind="lib" path="lib/logback-core-0.9.20.jar"/>
 	<classpathentry kind="lib" path="lib/miniupnpc.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-api-1.5.11.jar"/>
-	<classpathentry kind="lib" path="lib/SuperCSV-1.20.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

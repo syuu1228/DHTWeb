@@ -30,7 +30,7 @@ import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Date;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +38,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import org.dhtfox.log.AccessLogBean;
-import org.dhtfox.log.AccessLogWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
@@ -55,11 +53,11 @@ import ow.routing.RoutingException;
 public class ProxyHandler implements HttpHandler {
 
 	final static Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
+	final static Logger proxyLogger = LoggerFactory.getLogger("proxylog");
 	private final DHT<String> dht;
 	private final int port, httpTimeout;
 	private final Proxy proxy;
 	private final ExecutorService putExecutor;
-	private AccessLogWriter proxyLogger;
 
 	ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout,
 			ExecutorService putExecutor) {
@@ -68,16 +66,6 @@ public class ProxyHandler implements HttpHandler {
 		this.port = port;
 		this.httpTimeout = httpTimeout;
 		this.putExecutor = putExecutor;
-		try {
-			this.proxyLogger = new AccessLogWriter("proxy.log");
-			this.proxyLogger.open();
-		} catch (IOException e) {
-			logger.warn(e.getMessage(), e);
-		}
-	}
-
-	protected void finalize() throws Throwable {
-		this.proxyLogger.close();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -319,21 +307,32 @@ public class ProxyHandler implements HttpHandler {
 
 		if (!passthroughtest) {
 			if (!dhttest) {
-				proxyLogger.write(new AccessLogBean(new Date().toString(), "start LocalCache", uri.toString(), 0, true));
+				proxyLogger.info("start LocalCache uri:{}", uri);
 				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToLocalCache(he, uri);
-				proxyLogger.write(new AccessLogBean(new Date().toString(), "end LocalCache", uri.toString(), System.currentTimeMillis() - currentTime, result));
-				if (result)
+				if (result) {
+					proxyLogger.info(
+							"end LocalCache result:true uri:{} time:{}", uri,
+							System.currentTimeMillis() - currentTime);
 					return;
+				} else {
+					proxyLogger.info(
+							"end LocalCache result:false uri:{} time:{}", uri,
+							System.currentTimeMillis() - currentTime);
+				}
 			}
 			try {
-				proxyLogger.write(new AccessLogBean(new Date().toString(), "start DHT", uri.toString(), 0, true));
+				proxyLogger.info("start DHT uri:{}", uri);
 				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToDHT(he, key, uri);
-				proxyLogger.write(new AccessLogBean(new Date().toString(), "end DHT", uri.toString(), System.currentTimeMillis() - currentTime, result));
 				if (result) {
+					proxyLogger.info("end DHT result:true uri:{} time:{}", uri,
+							System.currentTimeMillis() - currentTime);
 					putCache(key);
 					return;
+				} else {
+					proxyLogger.info("end DHT result:false uri:{} time:{}",
+							uri, System.currentTimeMillis() - currentTime);
 				}
 				if (dhttest) {
 					he.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, 0);
@@ -351,12 +350,17 @@ public class ProxyHandler implements HttpHandler {
 				logger.info(e.getMessage());
 			}
 		}
-		proxyLogger.write(new AccessLogBean(new Date().toString(), "start OriginalServer", uri.toString(), 0, true));
+		proxyLogger.info("start OriginalServer uri:{}", uri);
 		long currentTime = System.currentTimeMillis();
 		boolean result = proxyToOriginalServer(he, uri);
-		proxyLogger.write(new AccessLogBean(new Date().toString(), "end OriginalServer", uri.toString(), System.currentTimeMillis() - currentTime, result));
-		if (result)
+		if (result) {
+			proxyLogger.info("end OriginalServer result:true uri:{} time:{}",
+					uri, System.currentTimeMillis() - currentTime);
 			putCache(key);
+		} else {
+			proxyLogger.info("end OriginalServer result:false uri:{} time:{}",
+					uri, System.currentTimeMillis() - currentTime);
+		}
 	}
 
 	private void setResponseHeaders(Headers responseHeaders,

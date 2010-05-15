@@ -17,10 +17,10 @@ package org.dhtfox;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.core.joran.spi.JoranException;
-import java.net.MalformedURLException;
+
+import java.io.IOException;
 import java.net.Proxy;
-import java.net.URL;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -43,6 +43,7 @@ import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
 import ow.dht.DHTFactory;
 import ow.id.ID;
+import ow.messaging.udp.UDPMessageReceiver;
 import ow.messaging.upnp.Mapping;
 import ow.messaging.upnp.UPnPManager;
 import ow.tool.dhtshell.DHTShell;
@@ -65,13 +66,14 @@ public class DHTFox {
 	private ExecutorService putExecutor = Executors.newSingleThreadExecutor();
 	private ScheduledExecutorService maintenanceExecutor = Executors
 			.newScheduledThreadPool(1);
+	private DHTShell shell;
 
 	public DHT<String> getDHT() {
 		return dht;
 	}
 
 	@SuppressWarnings("static-access")
-	public static void main(String[] args) throws JoranException {
+	public static void main(String[] args) throws Exception {
 		Options options = new Options();
 		Option secret = OptionBuilder.hasArg().withArgName("secret")
 				.isRequired().create("secret");
@@ -112,11 +114,27 @@ public class DHTFox {
 						.parseInt(cmd.getOptionValue("httpport")), Integer
 						.parseInt(cmd.getOptionValue("shellport")), cmd
 						.getOptionValue("logbackxml"));
+
+		System.in.read();
+		dhtfox.stop();
 	}
 
-	public boolean start(String secret, boolean upnpEnable,
+	public boolean startWithoutException(String secret, boolean upnpEnable,
 			String bootstrapNode, String localip, int dhtPort, int httpPort,
-			int shellPort, String logbackFilePath) throws JoranException {
+			int shellPort, String logbackFilePath) {
+		try {
+			start(secret, upnpEnable, bootstrapNode, localip, dhtPort,
+					httpPort, shellPort, logbackFilePath);
+		} catch (Exception e) {
+			logger.warn(e.getMessage(), e);
+			return false;
+		}
+		return true;
+	}
+
+	public void start(String secret, boolean upnpEnable, String bootstrapNode,
+			String localip, int dhtPort, int httpPort, int shellPort,
+			String logbackFilePath) throws Exception {
 		this.upnpEnable = upnpEnable;
 
 		LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -125,56 +143,67 @@ public class DHTFox {
 		lc.reset();
 		configurator.doConfigure(logbackFilePath);
 
-		try {
-			this.hashedSecret = new ByteArray(secret.getBytes("UTF-8"))
-					.hashWithSHA1();
-			DHTConfiguration config = DHTFactory.getDefaultConfiguration();
-			config.setDoUPnPNATTraversal(upnpEnable);
-			config.setContactPort(dhtPort);
-			if (localip != null)
-				config.setSelfAddress(localip);
-			dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_MAJOR_VERSION,
-					config, null);
-			dht.setHashedSecretForPut(hashedSecret);
-			if (bootstrapNode != null)
-				dht.joinOverlay(bootstrapNode);
-			DHTShell shell = new DHTShell();
-			shell.init(dht, shellPort);
+		this.hashedSecret = new ByteArray(secret.getBytes("UTF-8"))
+				.hashWithSHA1();
+		DHTConfiguration config = DHTFactory.getDefaultConfiguration();
+		config.setDoUPnPNATTraversal(upnpEnable);
+		config.setContactPort(dhtPort);
+		if (localip != null)
+			config.setSelfAddress(localip);
+		dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_MAJOR_VERSION,
+				config, null);
+		dht.setHashedSecretForPut(hashedSecret);
+		if (bootstrapNode != null)
+			dht.joinOverlay(bootstrapNode);
+		shell = new DHTShell();
+		shell.init(dht, shellPort);
 
-			LocalResponseCache.installResponseCache();
+		LocalResponseCache.installResponseCache();
 
-			maintenanceExecutor.scheduleAtFixedRate(
-					new LocalDataMaintenanceTask(dht, httpPort), 60, 60,
-					TimeUnit.SECONDS);
+		maintenanceExecutor.scheduleAtFixedRate(new LocalDataMaintenanceTask(
+				dht, httpPort), 60, 60, TimeUnit.SECONDS);
 
-			http = new HTTPServer(httpPort, dht, PROXY_SETTING,
-					HTTP_REQUEST_TIMEOUT, putExecutor);
-			http.bind();
-			if (upnpEnable) {
-				UPnPManager upnp = UPnPManager.getInstance();
-				httpMapping = new Mapping(httpPort, null, httpPort,
-						Mapping.Protocol.TCP, "DHTFox httpd");
-				upnp.addMapping(httpMapping);
-			}
-			return true;
-		} catch (Exception e) {
-			logger.warn(e.getMessage(), e);
-			return false;
+		http = new HTTPServer(httpPort, dht, PROXY_SETTING,
+				HTTP_REQUEST_TIMEOUT, putExecutor);
+		http.bind();
+		/*
+		if (upnpEnable) {
+			UPnPManager upnp = UPnPManager.getInstance();
+			httpMapping = new Mapping(httpPort, UDPMessageReceiver.selfAddr.getHostAddress(), httpPort,
+					Mapping.Protocol.TCP, "DHTFox httpd");
+			upnp.addMapping(httpMapping);
 		}
+		*/
 	}
 
-	public void stop() {
-		dht.stop();
+	public boolean stopWithoutException() {
+		try {
+			stop();
+		} catch(IOException e) {
+			logger.warn(e.getMessage(),e);
+			return false;
+		}
+		return true;
+	}
+	
+	public void stop() throws IOException {
+		putExecutor.shutdownNow();
+		maintenanceExecutor.shutdownNow();
 		http.stop();
+		shell.stop();
+		dht.stop();
+		/*
 		if (upnpEnable) {
 			UPnPManager upnp = UPnPManager.getInstance();
 			upnp.deleteMapping(httpMapping);
 		}
+		*/
 	}
-
+/*
 	public void registerCache(String u) throws MalformedURLException {
 		URL url = new URL(new URL(u).getPath().replaceFirst("^/proxy/", ""));
 		ID key = ID.getSHA1BasedID(url.toString().getBytes());
 		putExecutor.submit(new PutTask(dht, url.getPort(), key));
 	}
+*/
 }

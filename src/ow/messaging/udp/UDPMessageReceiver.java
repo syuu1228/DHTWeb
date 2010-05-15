@@ -55,7 +55,7 @@ import ow.util.concurrent.ExecutorBlockingMode;
 public final class UDPMessageReceiver implements MessageReceiver, Runnable {
 	private final static Logger logger = Logger.getLogger("messaging");
 
-	private InetMessagingAddress selfAddr;
+	public static InetMessagingAddress selfAddr;
 	protected DatagramChannel sock;
 	protected UDPMessagingConfiguration config;
 	protected UDPMessagingProvider provider;

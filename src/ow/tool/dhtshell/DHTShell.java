@@ -17,6 +17,7 @@
 
 package ow.tool.dhtshell;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +46,11 @@ import ow.tool.util.shellframework.ShellServer;
  * The main class of DHT shell server.
  * This shell is an utility to use/test a DHT.
  */
+@SuppressWarnings("unchecked")
 public final class DHTShell {
-	private final static String COMMAND = "owdhtshell";	// A shell/batch script provided as bin/owdhtshell
-
 	public final static String ENCODING = "UTF-8";
 
+	@SuppressWarnings("unchecked")
 	private final static Class/*Command<<DHT<String>>>*/[] COMMANDS = {
 		StatusCommand.class,
 		InitCommand.class,
@@ -71,15 +72,22 @@ public final class DHTShell {
 		commandList = ShellServer.createCommandList(COMMANDS);
 		commandTable = ShellServer.createCommandTable(commandList);
 	}
-
+	
+	private ShellServer<DHT<String>> shellServ;
+	
 	public void init(DHT<String> dht, int shellPort) {
 		// start a ShellServer
-		ShellServer<DHT<String>> shellServ =
+		shellServ =
 			new ShellServer<DHT<String>>(commandTable, commandList,
 					new ShowPromptPrinter(), new NoCommandPrinter(), null,
 					dht, shellPort, null);
 	}
 
+	public void stop() throws IOException {
+		shellServ.stop();
+	}
+	
+	
 	private static class ShowPromptPrinter implements MessagePrinter {
 		public void execute(PrintStream out, String hint) {
 			out.print("Ready." + Shell.CRLF);

@@ -49,6 +49,7 @@ public final class ShellServer<T> implements Runnable {
 	private T appDepData;
 	private ServerSocket servSock = null;
 	protected Thread shellServerThread = null;
+	private boolean stopped = false;
 
 	private Set<Interruptible> interruptibleSet = new HashSet<Interruptible>();
 
@@ -150,7 +151,7 @@ public final class ShellServer<T> implements Runnable {
 		this.shellServerThread = Thread.currentThread();
 
 		// accept incoming connections and invoke shells
-		while (true) {
+		while (!stopped) {
 			Socket sock;
 			try {
 				sock = servSock.accept();
@@ -176,6 +177,11 @@ public final class ShellServer<T> implements Runnable {
 			t.setDaemon(false);
 			t.start();
 		}
+	}
+	
+	public void stop() throws IOException {
+		stopped = true;
+		servSock.close();
 	}
 
 	public void addInterruptible(Interruptible t) {
