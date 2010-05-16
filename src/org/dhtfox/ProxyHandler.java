@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -43,7 +44,6 @@ import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
 import ow.dht.ValueInfo;
 import ow.id.ID;
-import ow.messaging.MessagingAddress;
 import ow.routing.RoutingException;
 
 /**
@@ -141,7 +141,7 @@ public class ProxyHandler implements HttpHandler {
 			try {
 				URL remoteUrl = new URL("http://" + v.getValue() + "/request/"
 						+ uri.toString());
-				MessagingAddress selfAddress = dht.getSelfAddress();
+				InetAddress selfAddress = dht.getSelfAddress();
 
 				if (v.getValue().equals(
 						selfAddress.getHostAddress() + ":" + port)) {

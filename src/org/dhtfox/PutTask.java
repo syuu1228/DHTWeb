@@ -5,11 +5,12 @@
 
 package org.dhtfox;
 
+import java.net.InetAddress;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
 import ow.id.ID;
-import ow.messaging.MessagingAddress;
 
 /**
  *
@@ -30,7 +31,7 @@ public class PutTask implements Runnable {
 
     @Override
     public void run() {
-        MessagingAddress selfAddress = dht.getSelfAddress();
+        InetAddress selfAddress = dht.getSelfAddress();
         logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
         putLogger.info("start key:{}", key);
 		long currentTime = System.currentTimeMillis();

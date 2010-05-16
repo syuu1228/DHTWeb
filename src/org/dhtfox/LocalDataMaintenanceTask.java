@@ -7,6 +7,7 @@ package org.dhtfox;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
@@ -17,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import ow.dht.DHT;
 import ow.dht.ValueInfo;
 import ow.id.ID;
-import ow.messaging.MessagingAddress;
 
 /**
  *
@@ -39,7 +39,7 @@ public class LocalDataMaintenanceTask implements Runnable {
         Map<String, Boolean> checkMap = new HashMap<String, Boolean>();
         // global directory
         keySet = dht.getGlobalKeys();
-        MessagingAddress selfAddress = dht.getSelfAddress();
+        InetAddress selfAddress = dht.getSelfAddress();
 
         if (!keySet.isEmpty()) {
             for (ID key : keySet) {
