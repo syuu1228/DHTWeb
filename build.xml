@@ -12,10 +12,23 @@
     <property name="source" value="1.6"/>
     <path id="DHTFox.classpath">
         <pathelement location="bin"/>
+        <pathelement location="lib/jul-to-slf4j-1.5.11.jar"/>
+        <pathelement location="lib/logback-classic-0.9.20.jar"/>
+        <pathelement location="lib/logback-core-0.9.20.jar"/>
+        <pathelement location="lib/slf4j-api-1.5.11.jar"/>
         <pathelement location="lib/clink170.jar"/>
+        <pathelement location="lib/commons-cli-1.2.jar"/>
+        <pathelement location="lib/je-4.0.103.jar"/>
     </path>
     <target name="init">
         <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="ow">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+                <exclude name="ow/tool/dhtshell/XmlRpcDHTServer.java"/>
+            </fileset>
+        </copy>
         <copy includeemptydirs="false" todir="bin">
             <fileset dir="src">
                 <exclude name="**/*.launch"/>
@@ -31,6 +44,11 @@
     <target name="build-subprojects"/>
     <target depends="init" name="build-project">
         <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+            <src path="ow"/>
+            <exclude name="ow/tool/dhtshell/XmlRpcDHTServer.java"/>
+            <classpath refid="DHTFox.classpath"/>
+        </javac>
         <javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
             <src path="src"/>
             <classpath refid="DHTFox.classpath"/>
@@ -49,5 +67,23 @@
     <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
         <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
         <antcall target="build"/>
+    </target>
+    <target name="DHTFox (2)">
+        <java classname="org.dhtfox.DHTFox" failonerror="true" fork="yes">
+            <arg line="-bootstrap 125.6.175.11:3997 -dhtport 3997 -httpport 8080 -logbackxml extention/java/logback.xml -secret abc -shellport 9999 -upnp"/>
+            <classpath refid="DHTFox.classpath"/>
+        </java>
+    </target>
+    <target name="DHTFox bootstrap node">
+        <java classname="org.dhtfox.DHTFox" failonerror="true" fork="yes">
+            <arg line="-N -H 8080 -l extention/java/logback.xml -x abc -p 10000 125.6.175.11:3998 3998"/>
+            <classpath refid="DHTFox.classpath"/>
+        </java>
+    </target>
+    <target name="DHTFox">
+        <java classname="org.dhtfox.DHTFox" failonerror="true" fork="yes">
+            <arg line="-localip 127.0.0.1 -dhtport 3997 -httpport 8080 -logbackxml extention/java/logback.xml -secret abc -shellport 9999"/>
+            <classpath refid="DHTFox.classpath"/>
+        </java>
     </target>
 </project>
