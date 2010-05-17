@@ -31,6 +31,10 @@ import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 
 import java.util.HashMap;
 import java.util.List;
@@ -169,8 +173,7 @@ public class ProxyHandler implements HttpHandler {
 								connection.getContentLength());
 						in = connection.getInputStream();
 						out = he.getResponseBody();
-						HttpUtil.sendBody(out, in, connection
-								.getContentLength());
+						sendBody(out, in, connection.getContentLength());
 					} catch (IOException e) {
 						logger.warn(e.getMessage(), e);
 					} finally {
@@ -225,7 +228,7 @@ public class ProxyHandler implements HttpHandler {
 				he.sendResponseHeaders(HttpURLConnection.HTTP_OK, length);
 				in = connection.getInputStream();
 				out = he.getResponseBody();
-				HttpUtil.sendBody(out, in, length);
+				sendBody(out, in, length);
 				result = true;
 			} else {
 				he.sendResponseHeaders(responseCode, 0);
@@ -399,5 +402,40 @@ public class ProxyHandler implements HttpHandler {
 
 	private void putCache(ID key) {
 		putExecutor.submit(new PutTask(dht, port, key));
+	}
+
+	private void sendBody(OutputStream out, InputStream in, long contentLength) {
+		sendBodyOnChannel(Channels.newChannel(out), Channels.newChannel(in),
+				contentLength);
+
+	}
+
+	private static final int BUF_SIZE = 32 * 1024;
+	private void sendBodyOnChannel(WritableByteChannel receiverCh,
+			ReadableByteChannel senderCh, long contentLength) {
+		long maxLength = contentLength == -1 ? Long.MAX_VALUE : contentLength;
+		ByteBuffer bbuf = ByteBuffer.allocate(BUF_SIZE);
+		int len = 0;
+		try {
+			for (long currentLength = 0; currentLength < maxLength; currentLength += len) {
+				bbuf.clear();
+				long remain = maxLength - currentLength;
+				if (remain < bbuf.limit()) {
+					bbuf.limit((int) remain);
+				}
+
+				len = senderCh.read(bbuf);
+				if (len == -1) {
+					break;
+				}
+
+				bbuf.flip();
+				receiverCh.write(bbuf);
+			}
+		} catch (IOException e) {
+		}
+		if (contentLength != -1 && len == -1) {
+			logger.warn("content may be imcomplete.");
+		}
 	}
 }

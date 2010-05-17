@@ -205,15 +205,15 @@ public final class Main extends AbstractDHTBasedTool<String>
 		cmd = null;
 
 		// start an XML-RPC server
-		XmlRpcDHTServer rpcServer = null;
+//		XmlRpcDHTServer rpcServer = null;
 		if (invokeXMLRPCServer) {
-			rpcServer = new XmlRpcDHTServer(dht, showMapOnWebInterface);
+//			rpcServer = new XmlRpcDHTServer(dht, showMapOnWebInterface);
 			int xmlrpcPort = dht.getConfiguration().getContactPort()
 					+ XMLRPC_PORT_DIFF;
 			try {
-				String url = rpcServer.start(xmlrpcPort, XMLRPC_PORT_RANGE);
+//				String url = rpcServer.start(xmlrpcPort, XMLRPC_PORT_RANGE);
 
-				System.out.println("Web and XML-RPC server: " + url);
+//				System.out.println("Web and XML-RPC server: " + url);
 			}
 			catch (Exception e) {
 				System.err.println("Failed to start a web server.");
@@ -250,8 +250,8 @@ public final class Main extends AbstractDHTBasedTool<String>
 					dht, shellPort, ac);
 		shellServ.addInterruptible(this);
 			// current thread is to be interrupted by "halt" command
-		if (rpcServer != null)
-			shellServ.addInterruptible(rpcServer);
+//		if (rpcServer != null)
+//			shellServ.addInterruptible(rpcServer);
 
 		Shell<DHT<String>> stdioShell = null;
 		if (disableStdin) {

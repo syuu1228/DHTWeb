@@ -67,35 +67,32 @@ import ow.tool.util.shellframework.Shell;
 import ow.tool.util.shellframework.ShellServer;
 import ow.tool.util.toolframework.AbstractDHTBasedTool;
 
-public class DHTFox extends AbstractDHTBasedTool<String>
-implements EmulatorControllable, Interruptible {
-	private final static String COMMAND = "dhtfox";	// A shell/batch script provided as bin/owdhtshell
+public class DHTFox extends AbstractDHTBasedTool<String> implements
+		EmulatorControllable, Interruptible {
+	private final static String COMMAND = "dhtfox"; // A shell/batch script
+													// provided as
+													// bin/owdhtshell
 	private final static int SHELL_PORT = -1;
 	private final static int HTTP_PORT = 8080;
 	public final static String ENCODING = "UTF-8";
-	private final static Class/*Command<<DHT<String>>>*/[] COMMANDS = {
-		StatusCommand.class,
-		InitCommand.class,
-		GetCommand.class, PutCommand.class, RemoveCommand.class,
-		SetTTLCommand.class, SetSecretCommand.class,
-		LocaldataCommand.class,
-//		SourceCommand.class,
-		HelpCommand.class,
-		QuitCommand.class,
-		HaltCommand.class,
-		ClearCommand.class,
-		SuspendCommand.class, ResumeCommand.class
-	};
+	@SuppressWarnings("unchecked")
+	private final static Class/* Command<<DHT<String>>> */[] COMMANDS = {
+			StatusCommand.class, InitCommand.class, GetCommand.class,
+			PutCommand.class, RemoveCommand.class, SetTTLCommand.class,
+			SetSecretCommand.class, LocaldataCommand.class,
+			// SourceCommand.class,
+			HelpCommand.class, QuitCommand.class, HaltCommand.class,
+			ClearCommand.class, SuspendCommand.class, ResumeCommand.class };
 
 	private final static List<Command<DHT<String>>> commandList;
-	private final static Map<String,Command<DHT<String>>> commandTable;
+	private final static Map<String, Command<DHT<String>>> commandTable;
 
 	static {
 		commandList = ShellServer.createCommandList(COMMANDS);
 		commandTable = ShellServer.createCommandTable(commandList);
 		SLF4JBridgeHandler.install();
 	}
-	
+
 	private static final Logger logger = LoggerFactory.getLogger(DHTFox.class);
 	public static final Proxy PROXY_SETTING = Proxy.NO_PROXY;
 	public static final int HTTP_REQUEST_TIMEOUT = 1000;
@@ -104,7 +101,7 @@ implements EmulatorControllable, Interruptible {
 	private HTTPServer http = null;
 	private boolean upnpEnable = true;
 	private Mapping httpMapping;
-	private ExecutorService putExecutor = Executors.newSingleThreadExecutor();
+	private ExecutorService putExecutor = Executors.newCachedThreadPool();
 	private ScheduledExecutorService maintenanceExecutor = Executors
 			.newScheduledThreadPool(1);
 
@@ -124,10 +121,10 @@ implements EmulatorControllable, Interruptible {
 		stdioShell = this.init(args, System.in, System.out, true);
 
 		if (stdioShell != null) {
-			stdioShell.run();	// this call is blocked
+			stdioShell.run(); // this call is blocked
 		}
 	}
-	
+
 	public Writer invoke(String[] args, PrintStream out) {
 		Shell<DHT<String>> stdioShell;
 		try {
@@ -143,20 +140,22 @@ implements EmulatorControllable, Interruptible {
 		else
 			return null;
 	}
-	
-	private Shell<DHT<String>> init(String[] args, InputStream in, PrintStream out, boolean interactive) throws Exception {
+
+	private Shell<DHT<String>> init(String[] args, InputStream in,
+			PrintStream out, boolean interactive) throws Exception {
 		int shellPort = SHELL_PORT;
 		boolean disableStdin = false;
 		String secret = null;
 		String logbackxml = "logback.xml";
 		int httpPort = HTTP_PORT;
-		
+
 		this.mainThread = Thread.currentThread();
-		
+
 		Options opts = new Options();
 		// from super
 		opts.addOption("s", "selfaddress", true, "self IP address");
-		opts.addOption("N", "no-upnp", false, "disable UPnP address port mapping");
+		opts.addOption("N", "no-upnp", false,
+				"disable UPnP address port mapping");
 		// from Main
 		opts.addOption("p", "shellport", true, "shell port number");
 		opts.addOption("n", "disablestdin", false, "disable standard input");
@@ -174,7 +173,7 @@ implements EmulatorControllable, Interruptible {
 			help.printHelp("DHTFox", opts, true);
 			System.exit(1);
 		}
-		
+
 		parser = null;
 		opts = null;
 
@@ -191,7 +190,7 @@ implements EmulatorControllable, Interruptible {
 		optVal = cmd.getOptionValue('x');
 		if (optVal != null)
 			secret = optVal;
-		else{
+		else {
 			System.err.println("secret required");
 			System.exit(1);
 		}
@@ -201,20 +200,21 @@ implements EmulatorControllable, Interruptible {
 		optVal = cmd.getOptionValue('H');
 		if (optVal != null)
 			httpPort = Integer.parseInt(optVal);
-		
+
 		LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
 		JoranConfigurator configurator = new JoranConfigurator();
 		configurator.setContext(lc);
 		lc.reset();
 		configurator.doConfigure(logbackxml);
 
-		this.hashedSecret = new ByteArray(secret.getBytes(ENCODING)).hashWithSHA1();
-		dht = super.initialize(Signature.APPLICATION_ID_DHT_SHELL, (short)0x10000,
-				DHTFactory.getDefaultConfiguration(),
-				COMMAND, cmd); 
-		
+		this.hashedSecret = new ByteArray(secret.getBytes(ENCODING))
+				.hashWithSHA1();
+		dht = super.initialize(Signature.APPLICATION_ID_DHT_SHELL,
+				(short) 0x10000, DHTFactory.getDefaultConfiguration(), COMMAND,
+				cmd);
+
 		cmd = null;
-		
+
 		dht.setHashedSecretForPut(hashedSecret);
 
 		LocalResponseCache.installResponseCache();
@@ -226,29 +226,28 @@ implements EmulatorControllable, Interruptible {
 				HTTP_REQUEST_TIMEOUT, putExecutor);
 		http.bind();
 		/*
-		if (upnpEnable) {
-			UPnPManager upnp = UPnPManager.getInstance();
-			httpMapping = new Mapping(httpPort, UDPMessageReceiver.selfAddr.getHostAddress(), httpPort,
-					Mapping.Protocol.TCP, "DHTFox httpd");
-			upnp.addMapping(httpMapping);
-		}
-		*/
-		
+		 * if (upnpEnable) { UPnPManager upnp = UPnPManager.getInstance();
+		 * httpMapping = new Mapping(httpPort,
+		 * UDPMessageReceiver.selfAddr.getHostAddress(), httpPort,
+		 * Mapping.Protocol.TCP, "DHTFox httpd"); upnp.addMapping(httpMapping);
+		 * }
+		 */
+
 		// start a ShellServer
-		ShellServer<DHT<String>> shellServ =
-			new ShellServer<DHT<String>>(commandTable, commandList,
-					new ShowPromptPrinter(), new NoCommandPrinter(), null,
-					dht, shellPort, null);
+		ShellServer<DHT<String>> shellServ = new ShellServer<DHT<String>>(
+				commandTable, commandList, new ShowPromptPrinter(),
+				new NoCommandPrinter(), null, dht, shellPort, null);
 		shellServ.addInterruptible(this);
 
 		Shell<DHT<String>> stdioShell = null;
 		if (disableStdin) {
 			try {
 				Thread.sleep(Long.MAX_VALUE);
-			} catch (InterruptedException e) {}
-		}
-		else {
-			stdioShell = new Shell<DHT<String>>(in, out, shellServ, dht, interactive);
+			} catch (InterruptedException e) {
+			}
+		} else {
+			stdioShell = new Shell<DHT<String>>(in, out, shellServ, dht,
+					interactive);
 		}
 
 		return stdioShell;
@@ -274,7 +273,8 @@ implements EmulatorControllable, Interruptible {
 	}
 
 	public void interrupt() {
-		if (this.mainThread != null && !this.mainThread.equals(Thread.currentThread()))
+		if (this.mainThread != null
+				&& !this.mainThread.equals(Thread.currentThread()))
 			this.mainThread.interrupt();
 	}
 
@@ -300,34 +300,19 @@ implements EmulatorControllable, Interruptible {
 	}
 
 	/*
-		public boolean stopWithoutException() {
-			try {
-				stop();
-			} catch(IOException e) {
-				logger.warn(e.getMessage(),e);
-				return false;
-			}
-			return true;
-		}
+	 * public boolean stopWithoutException() { try { stop(); } catch(IOException
+	 * e) { logger.warn(e.getMessage(),e); return false; } return true; }
+	 * 
+	 * public void stop() throws IOException { putExecutor.shutdownNow();
+	 * maintenanceExecutor.shutdownNow(); http.stop(); // shell.stop();
+	 * dht.stop(); // if (upnpEnable) { // UPnPManager upnp =
+	 * UPnPManager.getInstance(); // upnp.deleteMapping(httpMapping); // } }
+	 */
 
-		public void stop() throws IOException {
-			putExecutor.shutdownNow();
-			maintenanceExecutor.shutdownNow();
-			http.stop();
-//			shell.stop();
-			dht.stop();
-//			if (upnpEnable) {
-//				UPnPManager upnp = UPnPManager.getInstance();
-//				upnp.deleteMapping(httpMapping);
-//			}
-		}
-	*/
-	
-/*
-	public void registerCache(String u) throws MalformedURLException {
-		URL url = new URL(new URL(u).getPath().replaceFirst("^/proxy/", ""));
-		ID key = ID.getSHA1BasedID(url.toString().getBytes());
-		putExecutor.submit(new PutTask(dht, url.getPort(), key));
-	}
-*/
+	/*
+	 * public void registerCache(String u) throws MalformedURLException { URL
+	 * url = new URL(new URL(u).getPath().replaceFirst("^/proxy/", "")); ID key
+	 * = ID.getSHA1BasedID(url.toString().getBytes()); putExecutor.submit(new
+	 * PutTask(dht, url.getPort(), key)); }
+	 */
 }

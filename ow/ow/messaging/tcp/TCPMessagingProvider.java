@@ -125,4 +125,8 @@ public class TCPMessagingProvider extends AbstractMessagingProvider {
 			}
 		}
 	}
+	@Override
+	public InetAddress getSelfAddress() {
+		return this.selfAddress;
+	}
 }
