@@ -18,7 +18,6 @@
 package ow.messaging;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
@@ -101,6 +100,4 @@ public interface MessagingProvider {
 	 * Sets the message signature.
 	 */
 	byte[] setMessageSignature(byte[] signature);
-
-	InetAddress getSelfAddress();
 }

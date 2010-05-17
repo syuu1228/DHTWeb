@@ -20,7 +20,6 @@ package ow.dht.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -843,11 +842,6 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		}
 
 		return returnedValues;
-	}
-
-	@Override
-	public InetAddress getSelfAddress() {
-		return msgProvider.getSelfAddress();
 	}
 
 	@Override

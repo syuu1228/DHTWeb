@@ -174,9 +174,4 @@ public class DEmuMessagingProvider extends AbstractMessagingProvider {
 
 		this.emuProvider.setSelfAddress(host);
 	}
-
-	@Override
-	public InetAddress getSelfAddress() {
-		return null;
-	}
 }

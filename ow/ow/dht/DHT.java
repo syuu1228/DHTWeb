@@ -18,7 +18,6 @@
 package ow.dht;
 
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.util.Set;
 
 import ow.id.ID;
@@ -199,8 +198,6 @@ public interface DHT<V extends Serializable> extends HighLevelService {
 			return sb.toString();
 		}
 	}
-
-	InetAddress getSelfAddress();
 
 	void removeGlobalValue(ID key, ValueInfo<V> value) throws Exception;
 }

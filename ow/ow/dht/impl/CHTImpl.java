@@ -19,7 +19,6 @@ package ow.dht.impl;
 import java.io.File;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
@@ -365,14 +364,7 @@ public final class CHTImpl<V extends Serializable> implements DHT<V> {
 	}
 
 	@Override
-	public InetAddress getSelfAddress() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public void removeGlobalValue(ID key, ValueInfo<V> value) throws Exception {
-		// TODO Auto-generated method stub
-		
+		this.globalDir.remove(key, value);
 	}
 }

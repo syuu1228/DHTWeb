@@ -130,8 +130,4 @@ public class UDPMessagingProvider extends AbstractMessagingProvider {
 			}
 		}
 	}
-	@Override
-	public InetAddress getSelfAddress() {
-		return this.selfInetAddress;
-	}
 }

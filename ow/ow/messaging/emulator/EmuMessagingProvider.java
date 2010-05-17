@@ -18,7 +18,6 @@
 package ow.messaging.emulator;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -154,11 +153,5 @@ public final class EmuMessagingProvider extends AbstractMessagingProvider {
 				receiver.setSelfAddress(hostname);
 			}
 		}
-	}
-
-	@Override
-	public InetAddress getSelfAddress() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }
