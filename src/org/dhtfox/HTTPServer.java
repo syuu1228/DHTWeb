@@ -18,6 +18,7 @@ package org.dhtfox;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.concurrent.ExecutorService;
@@ -33,20 +34,23 @@ public class HTTPServer {
 	private final Proxy proxy;
 	private final HttpServer server;
 	private final ExecutorService putExecutor;
+	private final InetAddress selfAddress;
+
 
 	public HTTPServer(int port, DHT<String> dht, Proxy proxy,
-			int requestTimeout, ExecutorService putExecutor) throws IOException {
+			int requestTimeout, ExecutorService putExecutor, InetAddress selfAddress) throws IOException {
 		this.port = port;
 		this.dht = dht;
 		this.proxy = proxy;
 		this.httpTimeout = requestTimeout;
 		this.putExecutor = putExecutor;
 		this.server = HttpServer.create(new InetSocketAddress(port), 0);
+		this.selfAddress = selfAddress;
 	}
 
 	public void bind() {
 		HttpHandler proxyHandler = new ProxyHandler(dht, proxy, port,
-				httpTimeout, putExecutor);
+				httpTimeout, putExecutor, selfAddress);
 		HttpHandler requestHandler = new RequestHandler();
 		server.createContext("/proxy/", proxyHandler);
 		server.createContext("/dhttest/", proxyHandler);

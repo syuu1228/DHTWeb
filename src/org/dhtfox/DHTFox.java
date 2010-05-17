@@ -21,6 +21,7 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.Writer;
+import java.net.InetAddress;
 import java.net.Proxy;
 
 import java.util.List;
@@ -106,6 +107,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 			.newScheduledThreadPool(1);
 
 	private Thread mainThread = null;
+	private UPnP upnp;
 
 	protected void usage(String command) {
 		super.usage(command, null);
@@ -218,12 +220,15 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		dht.setHashedSecretForPut(hashedSecret);
 
 		LocalResponseCache.installResponseCache();
+		
+		upnp = new UPnP(upnpEnable);
+		InetAddress selfAddress = upnp.getSelfAddress();
 
 		maintenanceExecutor.scheduleAtFixedRate(new LocalDataMaintenanceTask(
-				dht, httpPort), 60, 60, TimeUnit.SECONDS);
+				dht, httpPort, selfAddress), 60, 60, TimeUnit.SECONDS);
 
 		http = new HTTPServer(httpPort, dht, PROXY_SETTING,
-				HTTP_REQUEST_TIMEOUT, putExecutor);
+				HTTP_REQUEST_TIMEOUT, putExecutor, selfAddress);
 		http.bind();
 		/*
 		 * if (upnpEnable) { UPnPManager upnp = UPnPManager.getInstance();

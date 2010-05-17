@@ -27,9 +27,12 @@ public class LocalDataMaintenanceTask implements Runnable {
     final static Logger logger = LoggerFactory.getLogger(LocalDataMaintenanceTask.class);
     private final DHT<String> dht;
     private final int port;
-    public LocalDataMaintenanceTask(DHT<String> dht, int port) {
+	private final InetAddress selfAddress;
+	
+    public LocalDataMaintenanceTask(DHT<String> dht, int port, InetAddress selfAddress) {
         this.dht = dht;
         this.port = port;
+        this.selfAddress = selfAddress;
     }
     
     @Override
@@ -39,7 +42,6 @@ public class LocalDataMaintenanceTask implements Runnable {
         Map<String, Boolean> checkMap = new HashMap<String, Boolean>();
         // global directory
         keySet = dht.getGlobalKeys();
-        InetAddress selfAddress = dht.getSelfAddress();
 
         if (!keySet.isEmpty()) {
             for (ID key : keySet) {

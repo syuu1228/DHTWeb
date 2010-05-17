@@ -62,14 +62,16 @@ public class ProxyHandler implements HttpHandler {
 	private final int port, httpTimeout;
 	private final Proxy proxy;
 	private final ExecutorService putExecutor;
+	private final InetAddress selfAddress;
 
 	ProxyHandler(DHT<String> dht, Proxy proxy, int port, int httpTimeout,
-			ExecutorService putExecutor) {
+			ExecutorService putExecutor, InetAddress selfAddress) {
 		this.dht = dht;
 		this.proxy = proxy;
 		this.port = port;
 		this.httpTimeout = httpTimeout;
 		this.putExecutor = putExecutor;
+		this.selfAddress = selfAddress;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -145,7 +147,6 @@ public class ProxyHandler implements HttpHandler {
 			try {
 				URL remoteUrl = new URL("http://" + v.getValue() + "/request/"
 						+ uri.toString());
-				InetAddress selfAddress = dht.getSelfAddress();
 
 				if (v.getValue().equals(
 						selfAddress.getHostAddress() + ":" + port)) {
@@ -401,7 +402,7 @@ public class ProxyHandler implements HttpHandler {
 	}
 
 	private void putCache(ID key) {
-		putExecutor.submit(new PutTask(dht, port, key));
+		putExecutor.submit(new PutTask(dht, port, key, selfAddress));
 	}
 
 	private void sendBody(OutputStream out, InputStream in, long contentLength) {

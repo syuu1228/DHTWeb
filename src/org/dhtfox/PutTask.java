@@ -22,16 +22,17 @@ public class PutTask implements Runnable {
     private final ID key;
     private final DHT<String> dht;
     private final int port;
+    private final InetAddress selfAddress;
 
-    public PutTask(DHT<String> dht, int port, ID key) {
+    public PutTask(DHT<String> dht, int port, ID key, InetAddress selfAddress) {
         this.dht = dht;
         this.port = port;
         this.key = key;
+        this.selfAddress = selfAddress;
     }
 
     @Override
     public void run() {
-        InetAddress selfAddress = dht.getSelfAddress();
         logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
         putLogger.info("start key:{}", key);
 		long currentTime = System.currentTimeMillis();
