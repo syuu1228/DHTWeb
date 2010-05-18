@@ -18,7 +18,6 @@ package org.dhtfox;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.Writer;
 import java.net.InetAddress;
@@ -72,8 +71,8 @@ import ow.tool.util.toolframework.AbstractDHTBasedTool;
 public class DHTFox extends AbstractDHTBasedTool<String> implements
 		EmulatorControllable, Interruptible {
 	private final static String COMMAND = "dhtfox"; // A shell/batch script
-													// provided as
-													// bin/owdhtshell
+	// provided as
+	// bin/owdhtshell
 	private final static int SHELL_PORT = -1;
 	private final static int HTTP_PORT = 8080;
 	public final static String ENCODING = "UTF-8";
@@ -103,7 +102,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 	private HTTPServer http = null;
 	private boolean upnpEnable = true;
 	private Mapping httpMapping;
-	private ExecutorService putExecutor = Executors.newCachedThreadPool();
+	private ExecutorService putExecutor = Executors.newSingleThreadExecutor();
 	private ScheduledExecutorService maintenanceExecutor = Executors
 			.newScheduledThreadPool(1);
 
@@ -115,46 +114,57 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 	}
 
 	public static void main(String[] args) throws Exception {
-		(new DHTFox()).start(args);
+		// (new DHTFox()).invoke(args, null);
+		(new DHTFox()).invokeTest();
 	}
 
-	protected void start(String[] args) throws Exception {
-		this.init(args, true);
-	}
-
-	public void invokeBackground(final String[] args) {
-		new Thread() {
+	public Writer invoke(String[] args, PrintStream out) {
+		final String[] a = args;
+		Thread t = new Thread() {
 			public void run() {
-				invoke(args, null);
+				try {
+					init(a, false);
+				} catch (Exception e) {
+					logger.warn(e.getMessage(), e);
+					e.printStackTrace();
+				}
 			}
 		};
-	}
-	
-	public Writer invoke(String[] args, PrintStream out) {
-		try {
-			this.init(args, false);
-		} catch (Exception e) {
-			logger.warn(e.getMessage(), e);
-			e.printStackTrace();
-		}
+		t.start();
 		return null;
 	}
 
-	private void init(String[] args, boolean interactive) throws Exception {
+	public void invokeTest() {
+		final String[] a = new String[] { "-N", "-H", "8080", "-l",
+				"logback.xml", "-x", "abc", "-p", "9999", "125.6.175.11:3997" };
+		Thread t = new Thread() {
+			public void run() {
+				try {
+					init(a, false);
+				} catch (Exception e) {
+					logger.warn(e.getMessage(), e);
+					e.printStackTrace();
+				}
+			}
+		};
+		t.start();
+	}
+
+	protected void init(String[] args, boolean interactive) throws Exception {
 		int shellPort = SHELL_PORT;
 		String secret = null;
 		String logbackxml = "logback.xml";
 		int httpPort = HTTP_PORT;
 
 		this.mainThread = Thread.currentThread();
-		
+
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				shutdown();
 				interrupt();
 			}
 		});
-		
+
 		Options opts = new Options();
 		// from super
 		opts.addOption("s", "selfaddress", true, "self IP address");
@@ -216,13 +226,14 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		cmd = null;
 
 		dht.setHashedSecretForPut(hashedSecret);
-		
+
 		LocalResponseCache.installResponseCache();
-		
+
 		upnp = new UPnP(upnpEnable);
 		InetAddress selfAddress = upnp.getSelfAddress();
-		
-		LocalResponseCache.putAllCaches(dht, httpPort, putExecutor, selfAddress);
+
+		LocalResponseCache
+				.putAllCaches(dht, httpPort, putExecutor, selfAddress);
 
 		maintenanceExecutor.scheduleAtFixedRate(new LocalDataMaintenanceTask(
 				dht, httpPort, selfAddress), 60, 60, TimeUnit.SECONDS);
@@ -230,11 +241,11 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		http = new HTTPServer(httpPort, dht, PROXY_SETTING,
 				HTTP_REQUEST_TIMEOUT, putExecutor, selfAddress);
 		http.bind();
-		
+
 		if (upnpEnable) {
-			httpMapping = new Mapping(httpPort,
-					InetAddress.getLocalHost().getHostAddress(), httpPort,
-					Mapping.Protocol.TCP, "DHTFox httpd");
+			httpMapping = new Mapping(httpPort, InetAddress.getLocalHost()
+					.getHostAddress(), httpPort, Mapping.Protocol.TCP,
+					"DHTFox httpd");
 			upnp.addMapping(httpMapping);
 		}
 
@@ -249,25 +260,6 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		} catch (InterruptedException e) {
 			logger.warn(e.getMessage(), e);
 		}
-	}
-
-	public boolean startWithoutException(String secret, boolean upnpEnable,
-			String bootstrapNode, String localip, int dhtPort, int httpPort,
-			int shellPort, String logbackFilePath) {
-		try {
-			start(secret, upnpEnable, bootstrapNode, localip, dhtPort,
-					httpPort, shellPort, logbackFilePath);
-		} catch (Exception e) {
-			logger.warn(e.getMessage(), e);
-			return false;
-		}
-		return true;
-	}
-
-	public void start(String secret, boolean upnpEnable, String bootstrapNode,
-			String localip, int dhtPort, int httpPort, int shellPort,
-			String logbackFilePath) throws Exception {
-
 	}
 
 	public void interrupt() {
@@ -297,14 +289,16 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		}
 	}
 
-	 protected void shutdown() { 
-		 putExecutor.shutdownNow();
-		 logger.info("shutdown putExecutor");
-		 maintenanceExecutor.shutdownNow();
-		 logger.info("shutdown maintenanceExecutor");
-		 http.stop();
-		 logger.info("shutdown httpd");
-		 upnp.deleteMapping(httpMapping);
-		 logger.info("delete upnp mapping");
-	 }
+	protected void shutdown() {
+		putExecutor.shutdownNow();
+		logger.info("shutdown putExecutor");
+		maintenanceExecutor.shutdownNow();
+		logger.info("shutdown maintenanceExecutor");
+		http.stop();
+		logger.info("shutdown httpd");
+		if (upnpEnable) {
+			upnp.deleteMapping(httpMapping);
+			logger.info("delete upnp mapping");
+		}
+	}
 }

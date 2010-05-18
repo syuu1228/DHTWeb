@@ -6,6 +6,8 @@
 package org.dhtfox;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +21,7 @@ import ow.id.ID;
 public class PutTask implements Runnable {
     public static final Logger logger = LoggerFactory.getLogger(PutTask.class);
     public static final Logger putLogger = LoggerFactory.getLogger("putlog");
+	private static final List<ID> puttedList = new ArrayList<ID>();
     private final ID key;
     private final DHT<String> dht;
     private final int port;
@@ -33,6 +36,9 @@ public class PutTask implements Runnable {
 
     @Override
     public void run() {
+    	if (puttedList.contains(key))
+    		return;
+    	puttedList.add(key);
         logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
         putLogger.info("start key:{}", key);
 		long currentTime = System.currentTimeMillis();
