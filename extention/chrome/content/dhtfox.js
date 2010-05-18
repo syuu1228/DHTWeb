@@ -27,24 +27,20 @@ function startDHT() {
 	try {
 		if(!DHTFox.isStarted()) {
 			var urlArray = [];
-			urlArray[0] = new java.net.URL(JAR_DIR_PATH + "javaFirefoxExtensionUtils.jar");
-			urlArray[1] = new java.net.URL(JAR_DIR_PATH + "DHTFox.jar");
-			urlArray[2] = new java.net.URL(JAR_DIR_PATH + "jul-to-slf4j-1.5.11.jar");
-			urlArray[3] = new java.net.URL(JAR_DIR_PATH + "miniupnpc.jar");
-			urlArray[4] = new java.net.URL(JAR_DIR_PATH + "slf4j-api-1.5.11.jar");
-			urlArray[5] = new java.net.URL(JAR_DIR_PATH + "FirefoxLogger.jar");
+			urlArray[0] = new java.net.URL(JAR_DIR_PATH + "clink170.jar");
+			urlArray[1] = new java.net.URL(JAR_DIR_PATH + "commons-cli-1.2.jar");
+			urlArray[2] = new java.net.URL(JAR_DIR_PATH + "DHTFox.jar");
+			urlArray[3] = new java.net.URL(JAR_DIR_PATH + "javaFirefoxExtensionUtils.jar");
+			urlArray[4] = new java.net.URL(JAR_DIR_PATH + "je-4.0.103.jar");
+			urlArray[5] = new java.net.URL(JAR_DIR_PATH + "jul-to-slf4j-1.5.11.jar");
 			urlArray[6] = new java.net.URL(JAR_DIR_PATH + "logback-classic-0.9.20.jar");
 			urlArray[7] = new java.net.URL(JAR_DIR_PATH + "logback-core-0.9.20.jar");
-			urlArray[8] = new java.net.URL(JAR_DIR_PATH + "commons-cli-1.1.jar");
+			urlArray[8] = new java.net.URL(JAR_DIR_PATH + "slf4j-api-1.5.11.jar");
 			
 			var cl = java.net.URLClassLoader.newInstance(urlArray);
 			policyAdd(cl, urlArray);
 			var myClass = cl.loadClass('org.dhtfox.DHTFox');
 			var result = DHTFox.start(myClass);
-			if (result == false)
-				alert("DHT start failed");
-			else
-				alert("DHT started");
 		}
 	} catch (e) {
 	    alert(e);

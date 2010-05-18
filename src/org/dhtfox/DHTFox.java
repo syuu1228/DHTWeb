@@ -122,11 +122,19 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		this.init(args, true);
 	}
 
+	public void invokeBackground(final String[] args) {
+		new Thread() {
+			public void run() {
+				invoke(args, null);
+			}
+		};
+	}
+	
 	public Writer invoke(String[] args, PrintStream out) {
 		try {
 			this.init(args, false);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			logger.warn(e.getMessage(), e);
 			e.printStackTrace();
 		}
 		return null;
