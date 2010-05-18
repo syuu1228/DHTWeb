@@ -45,7 +45,6 @@ import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTFactory;
 import ow.messaging.Signature;
-import ow.messaging.upnp.Mapping;
 import ow.tool.dhtshell.commands.ClearCommand;
 import ow.tool.dhtshell.commands.GetCommand;
 import ow.tool.dhtshell.commands.HaltCommand;
@@ -101,7 +100,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 	private DHT<String> dht = null;
 	private HTTPServer http = null;
 	private boolean upnpEnable = true;
-	private Mapping httpMapping;
+//	private Mapping httpMapping;
 	private ExecutorService putExecutor = Executors.newCachedThreadPool();
 	private ScheduledExecutorService maintenanceExecutor = Executors
 			.newScheduledThreadPool(1);
@@ -118,41 +117,34 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 	}
 
 	protected void start(String[] args) throws Exception {
-		Shell<DHT<String>> stdioShell = null;
-
-		stdioShell = this.init(args, System.in, System.out, true);
-
-		if (stdioShell != null) {
-			stdioShell.run(); // this call is blocked
-		}
+		this.init(args, true);
 	}
 
 	public Writer invoke(String[] args, PrintStream out) {
-		Shell<DHT<String>> stdioShell;
 		try {
-			stdioShell = this.init(args, null, out, false);
+			this.init(args, false);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return null;
 		}
-
-		if (stdioShell != null)
-			return stdioShell.getWriter();
-		else
-			return null;
+		return null;
 	}
 
-	private Shell<DHT<String>> init(String[] args, InputStream in,
-			PrintStream out, boolean interactive) throws Exception {
+	private void init(String[] args, boolean interactive) throws Exception {
 		int shellPort = SHELL_PORT;
-		boolean disableStdin = false;
 		String secret = null;
 		String logbackxml = "logback.xml";
 		int httpPort = HTTP_PORT;
 
 		this.mainThread = Thread.currentThread();
-
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() {
+				shutdown();
+				interrupt();
+			}
+		});
+		
 		Options opts = new Options();
 		// from super
 		opts.addOption("s", "selfaddress", true, "self IP address");
@@ -160,7 +152,6 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 				"disable UPnP address port mapping");
 		// from Main
 		opts.addOption("p", "shellport", true, "shell port number");
-		opts.addOption("n", "disablestdin", false, "disable standard input");
 		// original
 		opts.addOption("x", "secret", true, "secret");
 		opts.addOption("l", "logbackxml", true, "path of logback.xml");
@@ -185,9 +176,6 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		optVal = cmd.getOptionValue('p');
 		if (optVal != null) {
 			shellPort = Integer.parseInt(optVal);
-		}
-		if (cmd.hasOption('n')) {
-			disableStdin = true;
 		}
 		optVal = cmd.getOptionValue('x');
 		if (optVal != null)
@@ -218,11 +206,13 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		cmd = null;
 
 		dht.setHashedSecretForPut(hashedSecret);
-
+		
 		LocalResponseCache.installResponseCache();
 		
 		upnp = new UPnP(upnpEnable);
 		InetAddress selfAddress = upnp.getSelfAddress();
+		
+		LocalResponseCache.putAllCaches(dht, httpPort, putExecutor, selfAddress);
 
 		maintenanceExecutor.scheduleAtFixedRate(new LocalDataMaintenanceTask(
 				dht, httpPort, selfAddress), 60, 60, TimeUnit.SECONDS);
@@ -244,18 +234,11 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 				new NoCommandPrinter(), null, dht, shellPort, null);
 		shellServ.addInterruptible(this);
 
-		Shell<DHT<String>> stdioShell = null;
-		if (disableStdin) {
-			try {
-				Thread.sleep(Long.MAX_VALUE);
-			} catch (InterruptedException e) {
-			}
-		} else {
-			stdioShell = new Shell<DHT<String>>(in, out, shellServ, dht,
-					interactive);
+		try {
+			Thread.sleep(Long.MAX_VALUE);
+		} catch (InterruptedException e) {
+			logger.warn(e.getMessage(), e);
 		}
-
-		return stdioShell;
 	}
 
 	public boolean startWithoutException(String secret, boolean upnpEnable,
@@ -304,20 +287,13 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		}
 	}
 
-	/*
-	 * public boolean stopWithoutException() { try { stop(); } catch(IOException
-	 * e) { logger.warn(e.getMessage(),e); return false; } return true; }
-	 * 
-	 * public void stop() throws IOException { putExecutor.shutdownNow();
-	 * maintenanceExecutor.shutdownNow(); http.stop(); // shell.stop();
-	 * dht.stop(); // if (upnpEnable) { // UPnPManager upnp =
-	 * UPnPManager.getInstance(); // upnp.deleteMapping(httpMapping); // } }
-	 */
-
-	/*
-	 * public void registerCache(String u) throws MalformedURLException { URL
-	 * url = new URL(new URL(u).getPath().replaceFirst("^/proxy/", "")); ID key
-	 * = ID.getSHA1BasedID(url.toString().getBytes()); putExecutor.submit(new
-	 * PutTask(dht, url.getPort(), key)); }
-	 */
+	 protected void shutdown() { 
+		 putExecutor.shutdownNow();
+		 logger.info("shutdown putExecutor");
+		 maintenanceExecutor.shutdownNow();
+		 logger.info("shutdown maintenanceExecutor");
+		 http.stop();
+		 logger.info("shutdown httpd");
+		 // upnp
+	 }
 }
