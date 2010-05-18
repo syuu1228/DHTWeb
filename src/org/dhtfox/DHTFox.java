@@ -45,6 +45,7 @@ import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTFactory;
 import ow.messaging.Signature;
+import ow.messaging.upnp.Mapping;
 import ow.tool.dhtshell.commands.ClearCommand;
 import ow.tool.dhtshell.commands.GetCommand;
 import ow.tool.dhtshell.commands.HaltCommand;
@@ -67,6 +68,7 @@ import ow.tool.util.shellframework.Shell;
 import ow.tool.util.shellframework.ShellServer;
 import ow.tool.util.toolframework.AbstractDHTBasedTool;
 
+@SuppressWarnings("unchecked")
 public class DHTFox extends AbstractDHTBasedTool<String> implements
 		EmulatorControllable, Interruptible {
 	private final static String COMMAND = "dhtfox"; // A shell/batch script
@@ -100,7 +102,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 	private DHT<String> dht = null;
 	private HTTPServer http = null;
 	private boolean upnpEnable = true;
-//	private Mapping httpMapping;
+	private Mapping httpMapping;
 	private ExecutorService putExecutor = Executors.newCachedThreadPool();
 	private ScheduledExecutorService maintenanceExecutor = Executors
 			.newScheduledThreadPool(1);
@@ -220,13 +222,13 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		http = new HTTPServer(httpPort, dht, PROXY_SETTING,
 				HTTP_REQUEST_TIMEOUT, putExecutor, selfAddress);
 		http.bind();
-		/*
-		 * if (upnpEnable) { UPnPManager upnp = UPnPManager.getInstance();
-		 * httpMapping = new Mapping(httpPort,
-		 * UDPMessageReceiver.selfAddr.getHostAddress(), httpPort,
-		 * Mapping.Protocol.TCP, "DHTFox httpd"); upnp.addMapping(httpMapping);
-		 * }
-		 */
+		
+		if (upnpEnable) {
+			httpMapping = new Mapping(httpPort,
+					InetAddress.getLocalHost().getHostAddress(), httpPort,
+					Mapping.Protocol.TCP, "DHTFox httpd");
+			upnp.addMapping(httpMapping);
+		}
 
 		// start a ShellServer
 		ShellServer<DHT<String>> shellServ = new ShellServer<DHT<String>>(
@@ -294,6 +296,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		 logger.info("shutdown maintenanceExecutor");
 		 http.stop();
 		 logger.info("shutdown httpd");
-		 // upnp
+		 upnp.deleteMapping(httpMapping);
+		 logger.info("delete upnp mapping");
 	 }
 }

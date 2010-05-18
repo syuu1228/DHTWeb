@@ -3,6 +3,7 @@ package org.dhtfox;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import ow.messaging.upnp.Mapping;
 import ow.messaging.upnp.UPnPManager;
 
 public class UPnP {
@@ -25,5 +26,13 @@ public class UPnP {
 				return null;
 			}
 		return manager.getExternalAddress();
+	}
+	
+	public void addMapping(Mapping map) {
+		manager.addMapping(map);
+	}
+	
+	public void deleteMapping(Mapping map) {
+		manager.deleteMapping(map);
 	}
 }
