@@ -138,6 +138,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		String secret = null;
 		String logbackxml = "logback.xml";
 		int httpPort = HTTP_PORT;
+		InetAddress selfAddress = null;
 
 		this.mainThread = Thread.currentThread();
 
@@ -193,6 +194,9 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		optVal = cmd.getOptionValue('H');
 		if (optVal != null)
 			httpPort = Integer.parseInt(optVal);
+		optVal = cmd.getOptionValue('s');
+		if (optVal != null)
+			selfAddress = InetAddress.getByName(optVal);
 
 		LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
 		JoranConfigurator configurator = new JoranConfigurator();
@@ -213,7 +217,8 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		LocalResponseCache.installResponseCache();
 
 		upnp = new UPnP(upnpEnable);
-		InetAddress selfAddress = upnp.getSelfAddress();
+		if (selfAddress == null)
+			selfAddress = upnp.getSelfAddress();
 
 		LocalResponseCache
 				.putAllCaches(dht, httpPort, putExecutor, selfAddress);
