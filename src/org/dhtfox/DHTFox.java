@@ -114,8 +114,7 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 	}
 
 	public static void main(String[] args) throws Exception {
-		// (new DHTFox()).invoke(args, null);
-		(new DHTFox()).invokeTest();
+		(new DHTFox()).invoke(args, null);
 	}
 
 	public Writer invoke(String[] args, PrintStream out) {
@@ -132,22 +131,6 @@ public class DHTFox extends AbstractDHTBasedTool<String> implements
 		};
 		t.start();
 		return null;
-	}
-
-	public void invokeTest() {
-		final String[] a = new String[] { "-N", "-H", "8080", "-l",
-				"logback.xml", "-x", "abc", "-p", "9999", "125.6.175.11:3997" };
-		Thread t = new Thread() {
-			public void run() {
-				try {
-					init(a, false);
-				} catch (Exception e) {
-					logger.warn(e.getMessage(), e);
-					e.printStackTrace();
-				}
-			}
-		};
-		t.start();
 	}
 
 	protected void init(String[] args, boolean interactive) throws Exception {
