@@ -140,7 +140,14 @@ public class ProxyHandler implements HttpHandler {
 	private boolean proxyToDHT(HttpExchange he, ID key, URI uri)
 			throws RoutingException {
 		logger.info("request key to DHT:{}", key);
+		long currentTime = System.currentTimeMillis();
 		Set<ValueInfo<String>> remoteAddrs = dht.get(key);
+		if (remoteAddrs.size() > 0)
+			proxyLogger.info("DHT-Get,{},true,{}", uri,
+				System.currentTimeMillis() - currentTime);
+		else
+			proxyLogger.info("DHT-Get,{},false,{}", uri,
+				System.currentTimeMillis() - currentTime);
 		logger.info("got {} entries", remoteAddrs.size());
 		for (ValueInfo<String> v : remoteAddrs) {
 			HttpURLConnection connection = null;
@@ -154,7 +161,7 @@ public class ProxyHandler implements HttpHandler {
 					continue;
 				}
 				logger.info("Got url from DHT: {}", remoteUrl);
-
+				currentTime = System.currentTimeMillis();
 				connection = (HttpURLConnection) remoteUrl
 						.openConnection(proxy);
 				connection.setConnectTimeout(httpTimeout);
@@ -192,6 +199,8 @@ public class ProxyHandler implements HttpHandler {
 						}
 					}
 					logger.info("Request handled by DHT");
+					proxyLogger.info("DHT-Http,{},true,{}", uri,
+						System.currentTimeMillis() - currentTime);
 					return true;
 				}
 			} catch (IOException e) {
