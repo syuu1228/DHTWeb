@@ -12,7 +12,7 @@
 		<Encoding>UTF-8</Encoding>
 		<File>request.log</File>
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<Pattern>[%-5level][%d{yyyy-MM-dd HH:mm:ss}] %class - %msg%n
+			<Pattern>%d{yyyy-MM-dd HH:mm:ss}.%msg%n
 			</Pattern>
 		</layout>
 	</appender>
@@ -20,7 +20,7 @@
 		<Encoding>UTF-8</Encoding>
 		<File>proxy.log</File>
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<Pattern>[%-5level][%d{yyyy-MM-dd HH:mm:ss}] %class - %msg%n
+			<Pattern>%d{yyyy-MM-dd HH:mm:ss},%msg%n
 			</Pattern>
 		</layout>
 	</appender>
@@ -28,7 +28,7 @@
 		<Encoding>UTF-8</Encoding>
 		<File>put.log</File>
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<Pattern>[%-5level][%d{yyyy-MM-dd HH:mm:ss}] %class - %msg%n
+			<Pattern>%d{yyyy-MM-dd HH:mm:ss},%msg%n
 			</Pattern>
 		</layout>
 	</appender>

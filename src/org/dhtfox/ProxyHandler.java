@@ -311,31 +311,29 @@ public class ProxyHandler implements HttpHandler {
 
 		if (!passthroughtest) {
 			if (!dhttest) {
-				proxyLogger.info("start LocalCache uri:{}", uri);
 				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToLocalCache(he, uri);
 				if (result) {
 					proxyLogger.info(
-							"end LocalCache result:true uri:{} time:{}", uri,
+							"LocalCache,true,{},{}", uri,
 							System.currentTimeMillis() - currentTime);
 					return;
 				} else {
 					proxyLogger.info(
-							"end LocalCache result:false uri:{} time:{}", uri,
+							"LocalCache,false,{},{}", uri,
 							System.currentTimeMillis() - currentTime);
 				}
 			}
 			try {
-				proxyLogger.info("start DHT uri:{}", uri);
 				long currentTime = System.currentTimeMillis();
 				boolean result = proxyToDHT(he, key, uri);
 				if (result) {
-					proxyLogger.info("end DHT result:true uri:{} time:{}", uri,
+					proxyLogger.info("DHT,true,{},{}", uri,
 							System.currentTimeMillis() - currentTime);
-					putCache(key);
+					putCache(key, uri);
 					return;
 				} else {
-					proxyLogger.info("end DHT result:false uri:{} time:{}",
+					proxyLogger.info("DHT,false,{},{}",
 							uri, System.currentTimeMillis() - currentTime);
 				}
 				if (dhttest) {
@@ -354,15 +352,14 @@ public class ProxyHandler implements HttpHandler {
 				logger.info(e.getMessage());
 			}
 		}
-		proxyLogger.info("start OriginalServer uri:{}", uri);
 		long currentTime = System.currentTimeMillis();
 		boolean result = proxyToOriginalServer(he, uri);
 		if (result) {
-			proxyLogger.info("end OriginalServer result:true uri:{} time:{}",
+			proxyLogger.info("OriginalServer,true,{},{}",
 					uri, System.currentTimeMillis() - currentTime);
-			putCache(key);
+			putCache(key, uri);
 		} else {
-			proxyLogger.info("end OriginalServer result:false uri:{} time:{}",
+			proxyLogger.info("OriginalServer,false,{},{}",
 					uri, System.currentTimeMillis() - currentTime);
 		}
 	}
@@ -401,8 +398,8 @@ public class ProxyHandler implements HttpHandler {
 		}
 	}
 
-	private void putCache(ID key) {
-		putExecutor.submit(new PutTask(dht, port, key, selfAddress));
+	private void putCache(ID key, URI uri) {
+		putExecutor.submit(new PutTask(dht, port, key, selfAddress, uri));
 	}
 
 	private void sendBody(OutputStream out, InputStream in, long contentLength) {

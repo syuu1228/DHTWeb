@@ -67,7 +67,6 @@ public class RequestHandler implements HttpHandler {
 		}
 		logger.info("url:{}", uri);
 
-		requestLogger.info("start uri:{}", uri);
 		long currentTime = System.currentTimeMillis();
 		
 		File file = LocalResponseCache.getLocalFile(uri);
@@ -88,7 +87,7 @@ public class RequestHandler implements HttpHandler {
 				}
 
 				requestLogger.info(
-						"end result:false uri:{} time:{}", uri,
+						"false.{}.{}", uri,
 						System.currentTimeMillis() - currentTime);
 				return;
 			}
@@ -136,7 +135,7 @@ public class RequestHandler implements HttpHandler {
 			} catch (Exception e1) {
 			}
 			requestLogger.info(
-					"end result:false uri:{} time:{}", uri,
+					"true,{},{}", uri,
 					System.currentTimeMillis() - currentTime);
 		}
 	}

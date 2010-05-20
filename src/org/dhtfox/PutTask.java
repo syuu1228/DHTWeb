@@ -16,6 +16,7 @@
 package org.dhtfox;
 
 import java.net.InetAddress;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,12 +37,14 @@ public class PutTask implements Runnable {
     private final DHT<String> dht;
     private final int port;
     private final InetAddress selfAddress;
+	private URI uri;
 
-    public PutTask(DHT<String> dht, int port, ID key, InetAddress selfAddress) {
+    public PutTask(DHT<String> dht, int port, ID key, InetAddress selfAddress, URI uri) {
         this.dht = dht;
         this.port = port;
         this.key = key;
         this.selfAddress = selfAddress;
+        this.uri = uri;
     }
 
     @Override
@@ -50,7 +53,6 @@ public class PutTask implements Runnable {
     		return;
     	puttedList.add(key);
         logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
-        putLogger.info("start key:{}", key);
 		long currentTime = System.currentTimeMillis();
         while(true) {
             try {
@@ -65,7 +67,7 @@ public class PutTask implements Runnable {
                 }
             }
         }
-        putLogger.info("end key:{} time:{}", key, 
+        putLogger.info("{},{}", uri, 
 						System.currentTimeMillis() - currentTime);
     }
 }

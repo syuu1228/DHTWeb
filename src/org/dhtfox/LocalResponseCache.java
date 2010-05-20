@@ -137,7 +137,7 @@ public class LocalResponseCache extends ResponseCache {
 			}
 			ID key = ID.getSHA1BasedID(uri.toString().getBytes());
 			logger.info("uri:{} fileName:{}", uri, fileName);
-			putExecutor.submit(new PutTask(dht, port, key, selfAddress));
+			putExecutor.submit(new PutTask(dht, port, key, selfAddress, uri));
 		}
 	}
 
