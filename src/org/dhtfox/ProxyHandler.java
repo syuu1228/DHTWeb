@@ -143,10 +143,10 @@ public class ProxyHandler implements HttpHandler {
 		long currentTime = System.currentTimeMillis();
 		Set<ValueInfo<String>> remoteAddrs = dht.get(key);
 		if (remoteAddrs.size() > 0)
-			proxyLogger.info("DHT-Get,{},true,{}", uri,
+			proxyLogger.info("DHT-Get,true,{},{}", uri,
 				System.currentTimeMillis() - currentTime);
 		else
-			proxyLogger.info("DHT-Get,{},false,{}", uri,
+			proxyLogger.info("DHT-Get,false,{},{}", uri,
 				System.currentTimeMillis() - currentTime);
 		logger.info("got {} entries", remoteAddrs.size());
 		for (ValueInfo<String> v : remoteAddrs) {
@@ -199,7 +199,7 @@ public class ProxyHandler implements HttpHandler {
 						}
 					}
 					logger.info("Request handled by DHT");
-					proxyLogger.info("DHT-Http,{},true,{}", uri,
+					proxyLogger.info("DHT-Http,true,{},{}", uri,
 						System.currentTimeMillis() - currentTime);
 					return true;
 				}

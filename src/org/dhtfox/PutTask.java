@@ -54,12 +54,14 @@ public class PutTask implements Runnable {
     	puttedList.add(key);
         logger.info("key:{} selfAddress:{}", key, selfAddress.getHostAddress());
 		long currentTime = System.currentTimeMillis();
+		int i = 0;
         while(true) {
             try {
                 dht.put(key, selfAddress.getHostAddress() + ":" + port);
                 logger.info("putted key:{} selfAddress:{}", key, selfAddress.getHostAddress());
                 break;
             } catch (Exception e) {
+            	i++;
                 logger.warn(e.getMessage(), e);
                 try {
                     Thread.sleep(1000);
@@ -67,7 +69,6 @@ public class PutTask implements Runnable {
                 }
             }
         }
-        putLogger.info("{},{}", uri, 
-						System.currentTimeMillis() - currentTime);
+        putLogger.info("{},{}", System.currentTimeMillis() - currentTime, i);
     }
 }
