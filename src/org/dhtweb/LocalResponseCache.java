@@ -34,6 +34,8 @@ import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -146,6 +148,13 @@ public class LocalResponseCache extends ResponseCache {
 	 * resource cached locally.
 	 */
 	private static boolean isUpdateAvailable(URI remoteUri, File localFile) {
+		/** XXX: Need to implement following feature to keep cache coherency
+		 *  if (localCache maxage passed)
+		 *  	lastModified = original.getLastModified
+		 *  	if (localCache is older than last modified)
+		 *  		return true;
+		 *  return false;
+		 */
 		return false;
 		/*
 		 * URLConnection conn; try { conn = remoteUri.toURL().openConnection();
@@ -208,6 +217,7 @@ public class LocalResponseCache extends ResponseCache {
 
 		private FileInputStream fis;
 		private Map<String, List<String>> headers = null;
+		private FileLock lock = null;
 
 		@SuppressWarnings("unchecked")
 		private LocalCacheResponse(File localFile, File localHeader) {
@@ -215,6 +225,21 @@ public class LocalResponseCache extends ResponseCache {
 			ObjectInputStream ois = null;
 			try {
 				this.fis = new FileInputStream(localFile);
+				while(true) {
+					try {
+						lock = fis.getChannel().tryLock(0, Long.MAX_VALUE, true);
+					} catch (OverlappingFileLockException e) {
+						logger.warn("{} blocked", localFile);
+					}
+					if (lock == null) {
+						try {
+							Thread.sleep(100);
+						} catch (InterruptedException e) {
+							logger.warn(e.getMessage(), e);
+						}
+					}else
+						break;
+				}
 				fisHeader = new FileInputStream(localHeader);
 				ois = new ObjectInputStream(fisHeader);
 				this.headers = (Map<String, List<String>>) ois.readObject();
@@ -243,9 +268,9 @@ public class LocalResponseCache extends ResponseCache {
 	}
 
 	private class LocalCacheRequest extends CacheRequest {
-
 		private final File localFile, localHeader;
 		private FileOutputStream fos, fosHeader;
+		private FileLock lock = null;
 
 		private LocalCacheRequest(File localFile, File localHeader,
 				Map<String, List<String>> headerFields) {
@@ -255,6 +280,21 @@ public class LocalResponseCache extends ResponseCache {
 				ObjectOutputStream oos = null;
 				try {
 					this.fos = new FileOutputStream(localFile);
+					while(true) {
+						try {
+							lock = fos.getChannel().tryLock();
+						} catch (OverlappingFileLockException e) {
+							logger.warn("{} blocked", localFile);
+						}
+						if (lock == null) {
+							try {
+								Thread.sleep(100);
+							} catch (InterruptedException e) {
+								logger.warn(e.getMessage(), e);
+							}
+						}else
+							break;
+					}
 					this.fosHeader = new FileOutputStream(localHeader);
 					oos = new ObjectOutputStream(fosHeader);
 					oos.writeObject(headerFields);
